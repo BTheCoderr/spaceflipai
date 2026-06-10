@@ -51,8 +51,8 @@ export default function AIToolsScreen() {
               label={prompt}
               onPress={() =>
                 router.push({
-                  pathname: '/assistant/designer',
-                  params: { seedPrompt: prompt },
+                  pathname: '/assistant/[id]',
+                  params: { id: 'designer', seedPrompt: prompt },
                 })
               }
             />
