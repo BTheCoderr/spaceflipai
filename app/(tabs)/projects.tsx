@@ -8,6 +8,7 @@ import { RemoteImage } from '../../src/components/RemoteImage';
 import { useGenerationStore } from '../../src/lib/generationStore';
 import { formatSourceLabel } from '../../src/lib/imagePicker';
 import { getGenerationJobStatusLabel } from '../../src/lib/generationJobs';
+import { getProjectTypeLabel } from '../../src/data/mockProjectTypes';
 import { layout } from '../../src/constants/layout';
 import { colors, interaction, radius, shadows, spacing, typography } from '../../src/constants/theme';
 
@@ -65,7 +66,9 @@ export default function ProjectsScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Active Projects</Text>
             <View style={styles.projectCard}>
-              <Text style={styles.cardType}>{currentJob.toolId.replace(/-/g, ' ')}</Text>
+              <Text style={styles.cardType}>
+                {getProjectTypeLabel(currentJob.toolId)}
+              </Text>
               <Text style={styles.cardGoal}>Building upgrade plan…</Text>
               <StatusPill label={getGenerationJobStatusLabel(currentJob.status)} tone="active" />
             </View>
@@ -168,6 +171,12 @@ function CompactProjectCard({
       {project.budgetRange ? (
         <Text style={styles.compactBudget}>{project.budgetRange}</Text>
       ) : null}
+      {project.jobStatus ? (
+        <Text style={styles.compactStatus}>
+          {getGenerationJobStatusLabel(project.jobStatus)}
+        </Text>
+      ) : null}
+      <Text style={styles.compactSource}>{formatSourceLabel(project.source)}</Text>
     </View>
   );
 }
@@ -228,4 +237,6 @@ const styles = StyleSheet.create({
   compactTitle: { ...typography.heading, fontSize: 14 },
   compactMeta: { ...typography.caption },
   compactBudget: { ...typography.caption, color: colors.accentSecondary, marginTop: 2 },
+  compactStatus: { ...typography.caption, fontSize: 11, marginTop: 2, color: colors.navy },
+  compactSource: { ...typography.caption, fontSize: 11, marginTop: 2 },
 });

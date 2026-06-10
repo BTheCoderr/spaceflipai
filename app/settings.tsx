@@ -16,7 +16,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <ScreenHeader title="Setting" variant="close" />
+      <ScreenHeader title="Settings" variant="close" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <ProBanner onGetPro={() => openPaywallMock()} />
         <SettingsRow label="Feedback" onPress={() => showAlert('Feedback')} />

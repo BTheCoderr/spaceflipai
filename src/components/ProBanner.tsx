@@ -16,7 +16,7 @@ export function ProBanner({ onGetPro }: Props) {
     >
       <View style={styles.content}>
         <Text style={styles.title}>SpaceFlip Pro</Text>
-        <Text style={styles.subtitle}>Unlimited access to all design features</Text>
+        <Text style={styles.subtitle}>Unlimited property upgrade plans and export-ready reports</Text>
       </View>
       <Pressable
         style={({ pressed }) => [styles.button, pressed && styles.pressed]}

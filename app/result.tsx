@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   Alert,
-  Share,
   Platform,
   ScrollView,
   Pressable,
@@ -16,6 +15,7 @@ import { RemoteImage } from '../src/components/RemoteImage';
 import { ResultActionBar } from '../src/components/ResultActionBar';
 import { useGenerationStore } from '../src/lib/generationStore';
 import { getProjectTypeLabel } from '../src/data/mockProjectTypes';
+import { getResultPanelCopy } from '../src/data/mockUpgradeResults';
 import { colors, interaction, radius, spacing, typography } from '../src/constants/theme';
 
 type ResultTab = 'visual' | 'plan' | 'budget' | 'checklist';
@@ -67,6 +67,8 @@ export default function ResultScreen() {
     mockResultImageUrl ?? currentJob?.resultImageUrl ?? resultUrls[mockResultIndex % resultUrls.length] ?? params.imageUrl;
   const displayImageUrl = showBefore && inputUri ? inputUri : currentImageUrl;
   const budgetRange = plan?.budgetRange ?? selectedBudgetRange ?? '$2,500 – $7,500';
+  const projectTypeId = params.projectType ?? currentJob?.toolId ?? 'empty-commercial';
+  const panelCopy = getResultPanelCopy(projectTypeId);
 
   const handleClose = () => {
     if (router.canGoBack()) router.back();
@@ -138,7 +140,7 @@ export default function ResultScreen() {
         {activeTab === 'visual' ? (
           <>
             <Text style={styles.compareLabel}>
-              {showBefore ? 'Viewing Original' : 'Viewing Upgrade Concept'}
+              {showBefore ? 'Original Property Photo' : panelCopy.visualSubtitle}
             </Text>
             <View style={styles.imageArea}>
               <RemoteImage uri={displayImageUrl} style={styles.image} containerStyle={styles.imageContainer} />
@@ -157,7 +159,8 @@ export default function ResultScreen() {
         {activeTab === 'plan' ? (
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Upgrade Summary</Text>
-            <Text style={styles.panelBody}>{plan?.summary ?? 'Your property upgrade concept is ready.'}</Text>
+            <Text style={styles.panelSubtitle}>{panelCopy.planSubtitle}</Text>
+            <Text style={styles.panelBody}>{plan?.summary ?? 'Your property upgrade plan is ready.'}</Text>
             <Text style={styles.panelMeta}>Goal: {goal}</Text>
             <Text style={styles.panelMeta}>Project type: {displayTitle}</Text>
             <Text style={styles.sectionHeading}>Notes for Contractor or Client</Text>
@@ -169,6 +172,7 @@ export default function ResultScreen() {
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Budget Range</Text>
             <Text style={styles.budgetValue}>{budgetRange}</Text>
+            <Text style={styles.panelSubtitle}>{panelCopy.budgetSubtitle}</Text>
             <Text style={styles.panelBody}>
               Mock estimate based on project type, goal, and visible scope. Final bids should come from licensed trades.
             </Text>
@@ -182,6 +186,7 @@ export default function ResultScreen() {
         {activeTab === 'checklist' ? (
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Priority Checklist</Text>
+            <Text style={styles.panelSubtitle}>{panelCopy.checklistSubtitle}</Text>
             {(plan?.priorityChecklist ?? []).map((item, index) => (
               <View key={item} style={styles.checkRow}>
                 <View style={styles.checkBadge}>
@@ -243,15 +248,22 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
+    minWidth: 0,
     alignItems: 'center',
     paddingVertical: spacing.sm,
     borderRadius: radius.pill,
     backgroundColor: colors.pillInactive,
   },
   tabActive: { backgroundColor: colors.pillActive },
-  tabText: { ...typography.caption, fontWeight: '700', color: colors.text },
+  tabText: { fontSize: 11, fontWeight: '700', color: colors.text, textAlign: 'center' },
   tabTextActive: { color: '#FFFFFF' },
   scroll: { paddingBottom: spacing.lg },
+  panelSubtitle: {
+    ...typography.caption,
+    color: colors.accent,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+  },
   compareLabel: {
     ...typography.caption,
     textAlign: 'center',

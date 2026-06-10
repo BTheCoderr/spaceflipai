@@ -257,7 +257,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         return job;
       } catch (error) {
         const err = error as GenerationJobError;
-        const message = err.message ?? 'Could not create your design job. Please try again.';
+        const message = err.message ?? 'Could not create your upgrade plan. Please try again.';
         setState((prev) => ({ ...prev, generationError: message }));
         throw error;
       }

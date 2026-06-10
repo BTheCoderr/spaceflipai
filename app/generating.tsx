@@ -172,6 +172,7 @@ export default function GeneratingScreen() {
       <GenerationProgress
         steps={steps}
         loadingType="redesign"
+        title="Building your upgrade plan…"
         onComplete={() => setStepsDone(true)}
       />
     </SafeAreaView>

@@ -1,22 +1,19 @@
-# Supabase Setup Checklist
+# Supabase Storage — Device Test Checklist (SpaceFlip Pro)
 
-Follow these steps to connect SpaceFlip AI to Supabase Storage. Database tables and AI generation come later.
+Phase 5 tests **Storage upload only**. No auth, database, Edge Functions, or real AI.
 
-## 1. Create a Supabase project
+---
 
-1. Go to [https://supabase.com/dashboard](https://supabase.com/dashboard)
-2. Create a new project
-3. Note your **Project URL** and **anon public key** (Settings → API)
+## Quick device test (exact steps)
 
-## 2. Create the `design-inputs` storage bucket
+### A. Create bucket
 
-1. Open **Storage** in the Supabase dashboard
-2. Click **New bucket**
-3. Name: `design-inputs`
-4. For MVP testing: enable **Public bucket** (files get public URLs)
-5. For production later: use a **private** bucket with signed URLs + RLS
+Supabase Dashboard → **Storage** → **New bucket**
 
-## 3. Add environment variables
+- **Name:** `design-inputs`
+- **Public:** ON for MVP testing
+
+### B. Add `.env`
 
 Copy `.env.example` to `.env` in the project root:
 
@@ -28,78 +25,105 @@ Fill in:
 
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
 ```
 
-**Never** add:
+Get values from Supabase Dashboard → **Settings** → **API**.
 
-- `SUPABASE_SERVICE_ROLE_KEY`
-- OpenAI, Replicate, or Stability API keys
+**Never** put service role keys or AI provider keys in the mobile app.
 
-Those belong in Supabase Edge Function secrets only.
-
-## 4. Restart Expo
-
-Stop Metro (Ctrl+C), then:
+### C. Restart Expo
 
 ```bash
 cd "/Users/beforreal/Desktop/spaceflip AI"
 npx expo start -c
 ```
 
-Expo reads `EXPO_PUBLIC_*` vars at build time. A cache clear ensures new values load.
+In Metro logs (dev only) you should see:
 
-## 5. Test image upload
+```text
+[SpaceFlip Pro] Supabase configured: true
+```
 
-1. Open the app in Expo Go
-2. Go to **Design** → pick any tool
-3. Tap **Camera** or **Gallery** and select a photo
-4. Tap **Continue**
-5. Watch the generating screen — status should progress: queued → uploading → processing → completed
+If `false`, env vars are missing — the app uses mock upload (no Supabase file).
 
-## 6. Verify file in Supabase Storage
+### D. Test on iPhone
 
-1. Open Supabase dashboard → **Storage** → `design-inputs`
-2. Look for path: `users/demo-user/inputs/{timestamp}-{fileName}`
-3. Confirm the uploaded image appears
+1. Open the app in **Expo Go**
+2. **Visualize** → pick any project type
+3. Choose a real photo via **Camera** or **Gallery**
+4. Select a goal → tap **Continue**
 
-If env vars are missing, the app falls back to local mock upload (no file in Supabase).
+### E. Verify in Supabase Dashboard
 
-## 7. Later: create database tables
+Supabase Dashboard → **Storage** → **design-inputs** → browse to:
 
-When ready, apply the SQL draft in `SUPABASE_SCHEMA.md`:
+```text
+users/demo-user/inputs/
+```
 
-- `profiles`
-- `design_projects`
-- `uploaded_photos`
-- `generation_jobs`
-- `generated_designs`
+Confirm the uploaded file appears (name pattern: `{timestamp}-{fileName}`).
 
-Enable RLS so users can only access their own data.
+In Metro logs (dev only) look for:
 
-## 8. Later: Edge Function for AI generation
+```text
+[SpaceFlip Pro][Storage] Upload started { bucket, storagePath, mimeType, ... }
+[SpaceFlip Pro][Storage] Upload success { storagePath, publicUrl }
+```
 
-1. Create Edge Function `create-generation-job`
-2. Store AI keys as Supabase secrets
-3. Function reads input from `design-inputs`, calls AI provider, saves result
-4. Mobile app polls or subscribes to job status — no direct AI calls from the app
+### F. Confirm app continues
+
+**Generating** → **Result** → **Save Project** → **Projects** tab shows saved item.
+
+Mock AI generation still runs after upload — that is expected for Phase 5.
+
+---
+
+## Optional: allow anon uploads (if upload returns 403)
+
+For a **public** MVP bucket, add a storage policy in Supabase SQL editor:
+
+```sql
+-- MVP testing only — tighten before production
+create policy "Allow public uploads to design-inputs"
+on storage.objects for insert
+with check (bucket_id = 'design-inputs');
+
+create policy "Allow public read design-inputs"
+on storage.objects for select
+using (bucket_id = 'design-inputs');
+```
+
+---
 
 ## Troubleshooting
 
-| Issue | Fix |
-|-------|-----|
-| Upload fails with network error | Check device internet; verify Supabase URL/key |
-| No file in bucket | Confirm `.env` values and restart Expo with `-c` |
-| Permission denied on upload | For public MVP bucket, allow anon uploads or add storage policies |
-| App still uses mock upload | Env vars empty or typo in variable names |
-| Expo Go works but upload 403 | Bucket may be private — make public for testing or add RLS policies |
+| Issue | What to do |
+|-------|------------|
+| `Supabase configured: false` | Add `.env` values and run `npx expo start -c` |
+| Alert: bucket not found | Create bucket named exactly `design-inputs` |
+| Alert: check your connection | Verify iPhone internet + Supabase project URL |
+| Upload 403 | Make bucket public or add storage policies above |
+| No file in bucket but no error | Confirm you used Camera/Gallery (not demo photo URL only) |
+| App works without `.env` | Expected — mock upload fallback |
 
-## Current MVP behavior
+---
 
-| Feature | Status |
-|---------|--------|
-| Supabase Storage upload | Wired when env vars set |
-| Generation job records | In-memory (DB insert prepared) |
-| AI generation | Mocked (Unsplash result URLs) |
-| Auth / login | Not required (`demo-user`) |
+## Current scope
+
+| Feature | Phase 5 status |
+|---------|----------------|
+| Supabase Storage upload | ✅ When env configured |
+| Generation jobs | In-memory only |
+| Database | Not connected |
+| Auth | Not connected |
+| AI generation | Mocked |
 | RevenueCat | Not connected |
+
+---
+
+## Later phases (not in this test)
+
+1. Database tables — see `SUPABASE_SCHEMA.md`
+2. Edge Function for real AI — server-side only
+3. Auth + RLS — replace `demo-user` paths

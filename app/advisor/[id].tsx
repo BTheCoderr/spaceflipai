@@ -173,7 +173,7 @@ export default function AdvisorChatScreen() {
 
         {messages.length === 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestions}>
-            {advisorPromptChips.slice(0, 4).map((chip) => (
+            {advisorPromptChips.map((chip) => (
               <PromptChip key={chip} label={chip} onPress={() => sendMessage(chip)} />
             ))}
           </ScrollView>

@@ -130,7 +130,7 @@ export const visualizeActions: VisualizeAction[] = [
   { id: 'stage-airbnb', projectTypeId: 'airbnb-unit', title: 'Stage an Airbnb', subtitle: 'Boost booking appeal and photo quality', icon: 'bed-outline' },
   { id: 'plan-office', projectTypeId: 'office-space', title: 'Plan an Office', subtitle: 'Desks, zones, and meeting flow', icon: 'business-outline' },
   { id: 'improve-retail', projectTypeId: 'retail-store', title: 'Improve a Retail Store', subtitle: 'Displays, flow, and checkout', icon: 'storefront-outline' },
-  { id: 'redesign-backyard', projectTypeId: 'backyard-landscape', title: 'Redesign a Backyard', subtitle: 'Outdoor zones and seating', icon: 'leaf-outline' },
+  { id: 'redesign-backyard', projectTypeId: 'backyard-landscape', title: 'Plan a Backyard Upgrade', subtitle: 'Outdoor use, seating, and maintenance', icon: 'leaf-outline' },
   { id: 'upgrade-curb', projectTypeId: 'home-exterior', title: 'Upgrade Curb Appeal', subtitle: 'Exterior presentation and entry', icon: 'home-outline' },
   { id: 'stage-listing', projectTypeId: 'real-estate-listing', title: 'Stage an Empty Listing', subtitle: 'Listing prep and buyer appeal', icon: 'key-outline' },
   { id: 'plan-restaurant', projectTypeId: 'restaurant', title: 'Plan a Restaurant Layout', subtitle: 'Seating and service paths', icon: 'restaurant-outline' },

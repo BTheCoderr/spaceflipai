@@ -7,10 +7,11 @@ import { colors, radius, spacing, typography } from '../constants/theme';
 type Props = {
   steps: string[];
   loadingType: LoadingType;
+  title?: string;
   onComplete?: () => void;
 };
 
-export function GenerationProgress({ steps, loadingType, onComplete }: Props) {
+export function GenerationProgress({ steps, loadingType, title = 'Building your upgrade plan…', onComplete }: Props) {
   const [stepIndex, setStepIndex] = useState(0);
   const duration = getStepDurationMs(loadingType);
 
@@ -26,7 +27,7 @@ export function GenerationProgress({ steps, loadingType, onComplete }: Props) {
   return (
     <View style={styles.wrap}>
       <ActivityIndicator size="large" color={colors.text} />
-      <Text style={styles.title}>Creating your design…</Text>
+      <Text style={styles.title}>{title}</Text>
       <View style={styles.steps}>
         {steps.map((step, i) => {
           const done = i < stepIndex;

@@ -120,7 +120,7 @@ export async function createGenerationJob(
   if (hasSupabaseConfig()) {
     // Future: await supabase.from('generation_jobs').insert(jobRow)
     if (__DEV__) {
-      console.warn('[SpaceFlip] Supabase configured — DB job insert not wired yet (in-memory only).');
+      console.warn('[SpaceFlip Pro] Supabase configured — DB job insert not wired yet (in-memory only).');
     }
   }
 
@@ -205,13 +205,13 @@ export async function listGenerationJobsForUser(
 export function getGenerationJobStatusLabel(status: GenerationJobStatus): string {
   switch (status) {
     case 'queued':
-      return 'Preparing your design…';
+      return 'Preparing your upgrade plan…';
     case 'uploading':
-      return 'Uploading your photo…';
+      return 'Uploading property photo…';
     case 'processing':
-      return 'Generating your redesign…';
+      return 'Building your upgrade plan…';
     case 'completed':
-      return 'Design ready!';
+      return 'Upgrade plan ready';
     case 'failed':
       return 'Something went wrong';
   }

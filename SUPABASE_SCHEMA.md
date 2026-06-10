@@ -1,13 +1,13 @@
 # Supabase Schema (Draft)
 
-This document describes the planned Postgres schema for SpaceFlip AI. **Do not apply until explicitly requested.**
+This document describes the planned Postgres schema for SpaceFlip Pro. **Do not apply until explicitly requested.**
 
 ## Overview
 
 | Table | Purpose |
 |-------|---------|
 | `profiles` | User account metadata and subscription quota |
-| `design_projects` | Saved design projects shown in Mine |
+| `design_projects` | Saved upgrade projects shown in Projects |
 | `uploaded_photos` | Room photo uploads linked to storage paths |
 | `generation_jobs` | Async design generation job lifecycle |
 | `generated_designs` | Final AI output images linked to jobs |
