@@ -21,7 +21,7 @@ export function ScreenHeader({ title, variant = 'back', onPress }: Props) {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)/explore');
+      router.replace('/(tabs)/projects');
     }
   };
 

@@ -1,51 +1,44 @@
-import { isSupabaseConfigured } from './config';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { env } from './config';
+
+let supabaseClient: SupabaseClient | null = null;
+let warnedMissingConfig = false;
+
+export function hasSupabaseConfig(): boolean {
+  return Boolean(env.supabaseUrl && env.supabaseAnonKey);
+}
 
 /**
- * Minimal Supabase client shape for future @supabase/supabase-js integration.
- * AI provider keys must NEVER be stored here — edge functions only.
+ * Returns a Supabase client when public env vars are set.
+ * Never throws — returns null when unconfigured.
+ * Service role keys must NEVER be used in the mobile app.
  */
-export type SupabaseClient = {
-  auth: {
-    getSession: () => Promise<{ data: { session: { access_token: string } | null } }>;
-  };
-  storage: {
-    from: (bucket: string) => {
-      upload: (path: string, file: unknown, options?: unknown) => Promise<{ data: unknown; error: Error | null }>;
-      getPublicUrl: (path: string) => { data: { publicUrl: string } };
-    };
-  };
-  functions: {
-    invoke: (name: string, options?: { body?: unknown }) => Promise<{ data: unknown; error: Error | null }>;
-  };
-  from: (table: string) => {
-    select: (columns?: string) => unknown;
-    insert: (row: unknown) => unknown;
-    update: (row: unknown) => unknown;
-  };
-};
-
-let warnedOnce = false;
-
-function createStubClient(): SupabaseClient {
-  const notWired = () => {
-    if (!warnedOnce) {
-      console.warn('[SpaceFlip] Supabase env vars set but client not wired yet. Using mocks.');
-      warnedOnce = true;
-    }
-    throw new Error('Supabase client not wired — see BACKEND_PLAN.md');
-  };
-
-  return {
-    auth: { getSession: async () => notWired() as never },
-    storage: { from: () => ({ upload: async () => notWired() as never, getPublicUrl: () => notWired() as never }) },
-    functions: { invoke: async () => notWired() as never },
-    from: () => ({ select: () => notWired(), insert: () => notWired(), update: () => notWired() }),
-  };
-}
-
 export function getSupabaseClient(): SupabaseClient | null {
-  if (!isSupabaseConfigured()) return null;
-  // Future: import { createClient } from '@supabase/supabase-js'
-  // return createClient(env.supabaseUrl, env.supabaseAnonKey);
-  return createStubClient();
+  if (!hasSupabaseConfig()) {
+    if (!warnedMissingConfig && __DEV__) {
+      console.warn(
+        '[SpaceFlip] Supabase env vars missing — using local mock upload/job behavior.'
+      );
+      warnedMissingConfig = true;
+    }
+    return null;
+  }
+
+  if (!supabaseClient) {
+    supabaseClient = createClient(env.supabaseUrl, env.supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+  }
+
+  return supabaseClient;
 }
+
+/** Convenience alias — same as getSupabaseClient(). */
+export const supabase = {
+  get client(): SupabaseClient | null {
+    return getSupabaseClient();
+  },
+};

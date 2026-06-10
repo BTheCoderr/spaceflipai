@@ -6,20 +6,23 @@ export default function RootLayout() {
   return (
     <GenerationProvider>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#FFFFFF' } }}>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#FAFAF8' } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="style-detail" options={{ presentation: 'card' }} />
-        <Stack.Screen name="style-transfer" options={{ presentation: 'card' }} />
+        <Stack.Screen name="project-intake/[projectType]" options={{ presentation: 'card' }} />
         <Stack.Screen name="generating" options={{ presentation: 'card', gestureEnabled: false }} />
         <Stack.Screen name="result" options={{ presentation: 'card' }} />
-        <Stack.Screen name="create-painting" options={{ presentation: 'card' }} />
-        <Stack.Screen name="painting-result" options={{ presentation: 'card' }} />
+        <Stack.Screen name="advisor/[id]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="plan/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="style-transfer" options={{ presentation: 'card' }} />
+        <Stack.Screen name="style-detail" options={{ presentation: 'card' }} />
+        <Stack.Screen name="tool/[toolId]" options={{ presentation: 'card' }} />
         <Stack.Screen name="assistant/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="assistants" options={{ presentation: 'card' }} />
-        <Stack.Screen name="tool/[toolId]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="create-painting" options={{ presentation: 'card' }} />
+        <Stack.Screen name="painting-result" options={{ presentation: 'card' }} />
       </Stack>
     </GenerationProvider>
   );

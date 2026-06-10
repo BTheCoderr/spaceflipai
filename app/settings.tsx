@@ -7,7 +7,7 @@ import { openPaywallMock, restorePurchasesMock } from '../src/lib/payments';
 import { colors, spacing } from '../src/constants/theme';
 
 const PLACEHOLDER_LEGAL =
-  'This is placeholder legal text for the SpaceFlip AI MVP. Full terms and privacy policy will be added before launch.';
+  'This is placeholder legal text for the SpaceFlip Pro MVP. Full terms and privacy policy will be added before launch.';
 
 export default function SettingsScreen() {
   const showAlert = (title: string, message?: string) => {

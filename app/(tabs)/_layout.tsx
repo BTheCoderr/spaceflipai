@@ -8,7 +8,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.text,
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
           fontSize: 11,
@@ -17,7 +17,7 @@ export default function TabLayout() {
           marginBottom: Platform.OS === 'ios' ? 0 : 4,
         },
         tabBarStyle: {
-          backgroundColor: colors.background,
+          backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,
           height: Platform.OS === 'ios' ? 88 : 64,
@@ -27,41 +27,45 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="explore"
+        name="projects"
         options={{
-          title: 'Explore',
+          title: 'Projects',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass-outline" size={size} color={color} />
+            <Ionicons name="folder-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="design"
+        name="visualize"
         options={{
-          title: 'Design',
+          title: 'Visualize',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="color-palette-outline" size={size} color={color} />
+            <Ionicons name="scan-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="ai-tools"
+        name="plans"
         options={{
-          title: 'AI Tools',
+          title: 'Plans',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="sparkles-outline" size={size} color={color} />
+            <Ionicons name="document-text-outline" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="mine"
+        name="advisors"
         options={{
-          title: 'Mine',
+          title: 'Advisors',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
+            <Ionicons name="people-outline" size={size} color={color} />
           ),
         }}
       />
+      <Tabs.Screen name="explore" options={{ href: null }} />
+      <Tabs.Screen name="design" options={{ href: null }} />
+      <Tabs.Screen name="ai-tools" options={{ href: null }} />
+      <Tabs.Screen name="mine" options={{ href: null }} />
     </Tabs>
   );
 }

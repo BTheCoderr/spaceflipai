@@ -12,11 +12,11 @@ const BACKGROUND_IMAGE = normalizeImageUrl(
 );
 
 const benefits = [
-  'Unlimited AI designs',
-  'Interior and exterior redesigns',
-  'Commercial layouts',
-  'Save and export designs',
-  'Priority generation',
+  'Unlimited property upgrade plans',
+  'Airbnb, office, retail, and landscape workflows',
+  'Budget ranges and contractor checklists',
+  'Save and export client-ready plans',
+  'Priority plan generation',
 ];
 
 export default function PaywallScreen() {
@@ -26,7 +26,7 @@ export default function PaywallScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(tabs)/explore');
+      router.replace('/(tabs)/projects');
     }
   };
 
@@ -57,7 +57,7 @@ export default function PaywallScreen() {
             <Ionicons name="close" size={28} color="#FFFFFF" />
           </Pressable>
           <View style={styles.content}>
-            <Text style={styles.title}>SpaceFlip AI</Text>
+            <Text style={styles.title}>SpaceFlip Pro</Text>
             <Text style={styles.subtitle}>Try 3 days free, then $9.99/week</Text>
             <View style={styles.benefits}>
               {benefits.map((b) => (

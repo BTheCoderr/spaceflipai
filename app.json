@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "SpaceFlip AI",
-    "slug": "spaceflip-ai",
+    "name": "SpaceFlip Pro",
+    "slug": "spaceflip-pro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,19 +11,19 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
+      "backgroundColor": "#FAFAF8"
     },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "SpaceFlip AI needs camera access so you can take photos of rooms and spaces.",
-        "NSPhotoLibraryUsageDescription": "SpaceFlip AI needs photo library access so you can choose room photos to redesign."
+        "NSCameraUsageDescription": "SpaceFlip Pro needs camera access so you can photograph properties and commercial spaces for upgrade planning.",
+        "NSPhotoLibraryUsageDescription": "SpaceFlip Pro needs photo library access so you can choose property photos for visual upgrade plans."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#FAFAF8"
       },
       "permissions": [
         "android.permission.CAMERA",
@@ -42,8 +42,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "SpaceFlip AI needs photo library access so you can choose room photos to redesign.",
-          "cameraPermission": "SpaceFlip AI needs camera access so you can take photos of rooms and spaces."
+          "photosPermission": "SpaceFlip Pro needs photo library access so you can choose property photos for visual upgrade plans.",
+          "cameraPermission": "SpaceFlip Pro needs camera access so you can photograph properties and commercial spaces for upgrade planning."
         }
       ]
     ],

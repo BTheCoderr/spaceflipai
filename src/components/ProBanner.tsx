@@ -15,7 +15,7 @@ export function ProBanner({ onGetPro }: Props) {
       style={styles.banner}
     >
       <View style={styles.content}>
-        <Text style={styles.title}>SpaceFlip AI ✦</Text>
+        <Text style={styles.title}>SpaceFlip Pro</Text>
         <Text style={styles.subtitle}>Unlimited access to all design features</Text>
       </View>
       <Pressable
