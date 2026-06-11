@@ -21,6 +21,14 @@ import {
   type GenerationJobStatus,
 } from './generationJobs';
 import {
+  DB_LOAD_FAILED_MESSAGE,
+  DB_SAVE_FAILED_MESSAGE,
+  designProjectToSavedMockProject,
+  listDesignProjectsForUser,
+  saveDesignProject,
+} from './projects';
+import { DbError } from './dbErrors';
+import {
   StorageUploadError,
   uploadDesignInputImage,
   type UploadDesignInputResult,
@@ -43,8 +51,13 @@ export type SavedMockProject = {
   jobStatus?: GenerationJobStatus;
   status: ProjectStatus;
   budgetRange?: string;
+  notes?: string;
   source: PickedImageSource;
   createdAt: string;
+  checklist?: string[];
+  budgetItems?: string[];
+  planSummary?: string;
+  contractorNotes?: string;
   /** @deprecated Use title */
   toolName?: string;
   /** @deprecated Use projectType */
@@ -66,6 +79,8 @@ type GenerationState = {
   mockResultIndex: number;
   lastGeneratedProject?: SavedMockProject;
   savedProjects: SavedMockProject[];
+  savedProjectsLoading: boolean;
+  savedProjectsError?: string;
   currentJobId?: string;
   currentJob?: GenerationJob;
   uploadedInputPublicUrl?: string;
@@ -108,6 +123,8 @@ type GenerationContextValue = GenerationState & {
   completeMockGeneration: (resultUrl: string, resultIndex?: number) => void;
   cycleMockResult: (urls: string[]) => string;
   saveProject: (project: Omit<SavedMockProject, 'id' | 'createdAt'>) => SavedMockProject;
+  loadSavedProjects: () => Promise<void>;
+  saveCurrentProject: () => Promise<SavedMockProject>;
   resetGeneration: () => void;
 };
 
@@ -115,6 +132,7 @@ const initialState: GenerationState = {
   generationStatus: 'idle',
   mockResultIndex: 0,
   savedProjects: [],
+  savedProjectsLoading: false,
 };
 
 const GenerationContext = createContext<GenerationContextValue | null>(null);
@@ -234,7 +252,10 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       try {
         const job = await createGenerationJob({
           toolId: input.projectTypeId,
+          goal: input.goal,
           styleId: input.goal,
+          budgetRange: input.budgetRange ?? current.selectedBudgetRange,
+          notes: current.selectedNotes,
           inputImageUri: image.uri,
           inputStoragePath: current.uploadedInputStoragePath,
           inputPublicUrl: current.uploadedInputPublicUrl ?? image.uri,
@@ -378,10 +399,97 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const loadSavedProjects = useCallback(async () => {
+    setState((prev) => ({ ...prev, savedProjectsLoading: true, savedProjectsError: undefined }));
+
+    try {
+      const projects = await listDesignProjectsForUser();
+      const savedProjects = projects.map(designProjectToSavedMockProject);
+      setState((prev) => ({
+        ...prev,
+        savedProjects,
+        savedProjectsLoading: false,
+        savedProjectsError: undefined,
+      }));
+    } catch (error) {
+      const message =
+        error instanceof DbError
+          ? error.message
+          : DB_LOAD_FAILED_MESSAGE;
+      setState((prev) => ({
+        ...prev,
+        savedProjectsLoading: false,
+        savedProjectsError: message,
+      }));
+    }
+  }, []);
+
+  const saveCurrentProject = useCallback(async (): Promise<SavedMockProject> => {
+    const current = stateRef.current;
+    const projectTypeId =
+      current.selectedProjectTypeId ?? current.currentJob?.toolId ?? current.selectedToolId;
+    const goal = current.selectedGoal ?? current.currentJob?.goal ?? 'Improve this property';
+    const budgetRange = current.currentUpgradePlan?.budgetRange ?? current.selectedBudgetRange;
+    const inputImageUrl =
+      current.uploadedInputPublicUrl ??
+      current.currentJob?.inputPublicUrl ??
+      current.currentJob?.inputImageUri ??
+      current.selectedInputImage?.uri ??
+      '';
+    const resultImageUrl =
+      current.mockResultImageUrl ??
+      current.currentJob?.resultImageUrl ??
+      current.currentUpgradePlan?.resultImageUrls[0] ??
+      '';
+
+    if (!projectTypeId || !inputImageUrl || !resultImageUrl) {
+      const message = DB_SAVE_FAILED_MESSAGE;
+      setState((prev) => ({ ...prev, savedProjectsError: message }));
+      throw new DbError(message, 'query_failed');
+    }
+
+    try {
+      const persisted = await saveDesignProject({
+        generationJobId: current.currentJobId ?? current.currentJob?.id,
+        projectType: projectTypeId,
+        title: current.toolName ?? getProjectTypeLabel(projectTypeId),
+        goal,
+        budgetRange,
+        notes: current.selectedNotes ?? current.currentJob?.notes,
+        inputImageUrl,
+        resultImageUrl,
+        source: current.selectedInputImage?.source ?? current.currentJob?.source ?? 'demo',
+        checklist: current.currentUpgradePlan?.priorityChecklist ?? [],
+        budgetItems: current.currentUpgradePlan?.suggestedMaterials ?? [],
+        planSummary: current.currentUpgradePlan?.summary,
+        contractorNotes: current.currentUpgradePlan?.contractorNotes,
+      });
+
+      const saved = designProjectToSavedMockProject(persisted);
+      setState((prev) => ({
+        ...prev,
+        savedProjects: [
+          saved,
+          ...prev.savedProjects.filter((project) => project.id !== saved.id),
+        ],
+        lastGeneratedProject: saved,
+        savedProjectsError: undefined,
+      }));
+      return saved;
+    } catch (error) {
+      const message =
+        error instanceof DbError ? error.message : DB_SAVE_FAILED_MESSAGE;
+      setState((prev) => ({ ...prev, savedProjectsError: message }));
+      throw error instanceof DbError ? error : new DbError(message, 'query_failed');
+    }
+  }, []);
+
   const resetGeneration = useCallback(() => {
     setState((prev) => ({
       ...initialState,
       savedProjects: prev.savedProjects,
+      savedProjectsLoading: prev.savedProjectsLoading,
+      savedProjectsError: prev.savedProjectsError,
     }));
   }, []);
 
@@ -401,6 +509,8 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       completeMockGeneration,
       cycleMockResult,
       saveProject,
+      loadSavedProjects,
+      saveCurrentProject,
       resetGeneration,
     }),
     [
@@ -418,6 +528,8 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       completeMockGeneration,
       cycleMockResult,
       saveProject,
+      loadSavedProjects,
+      saveCurrentProject,
       resetGeneration,
     ]
   );

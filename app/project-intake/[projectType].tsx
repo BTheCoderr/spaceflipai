@@ -162,6 +162,8 @@ export default function ProjectIntakeScreen() {
           { text: 'Upgrade', onPress: () => router.push('/paywall') },
           { text: 'Cancel', style: 'cancel' },
         ]);
+      } else if (jobErr.code === 'table_missing') {
+        Alert.alert('Database setup needed', jobErr.message);
       } else if (e instanceof StorageUploadError || jobErr.message) {
         const message =
           e instanceof StorageUploadError

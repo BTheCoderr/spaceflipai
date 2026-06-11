@@ -109,13 +109,54 @@ using (bucket_id = 'design-inputs');
 
 ---
 
+## Database setup (Phase 6)
+
+After Storage upload works, add database persistence for generation jobs and saved projects.
+
+### G. Run database SQL
+
+1. Supabase Dashboard → **SQL Editor**
+2. Open `SUPABASE_DATABASE_SETUP.sql` from this repo
+3. Paste the full script and click **Run**
+4. Confirm tables exist: **Table Editor** → `generation_jobs`, `design_projects`
+
+The script creates:
+
+- `generation_jobs` — one row per Visualize → Continue flow
+- `design_projects` — one row per **Save Project** on the Result screen
+- Indexes on `user_id`, `status`, `project_type`, `created_at`
+- `updated_at` triggers
+- MVP RLS policies for `demo-user` only (tighten when Auth is added)
+
+### H. Test database persistence
+
+1. Ensure `.env` has Supabase URL + anon key
+2. Restart: `npx expo start -c`
+3. **Visualize** → pick project type → photo → goal → **Continue**
+4. Supabase **Table Editor** → `generation_jobs` → confirm a new row (`user_id = demo-user`, status progresses to `completed`)
+5. Finish **Generating** → **Result** → **Save Project**
+6. Supabase **Table Editor** → `design_projects` → confirm a new row linked by `generation_job_id`
+7. Open **Projects** tab → saved project card appears (pulls from Supabase on focus)
+
+### I. Troubleshooting (database)
+
+| Issue | What to do |
+|-------|------------|
+| Alert: database table missing | Run `SUPABASE_DATABASE_SETUP.sql` in SQL Editor |
+| Couldn't save this project | Check RLS policies and anon key in `.env` |
+| Couldn't load your projects | Confirm `design_projects` exists; tap **Try again** on Projects tab |
+| Jobs save but projects don't | Check foreign key / insert errors in Supabase logs |
+| No rows without `.env` | Expected — app uses in-memory mock storage |
+
+---
+
 ## Current scope
 
-| Feature | Phase 5 status |
-|---------|----------------|
+| Feature | Status |
+|---------|--------|
 | Supabase Storage upload | ✅ When env configured |
-| Generation jobs | In-memory only |
-| Database | Not connected |
+| Generation jobs (DB) | ✅ When env + tables configured |
+| Saved projects (DB) | ✅ When env + tables configured |
 | Auth | Not connected |
 | AI generation | Mocked |
 | RevenueCat | Not connected |
@@ -124,6 +165,6 @@ using (bucket_id = 'design-inputs');
 
 ## Later phases (not in this test)
 
-1. Database tables — see `SUPABASE_SCHEMA.md`
-2. Edge Function for real AI — server-side only
-3. Auth + RLS — replace `demo-user` paths
+1. Edge Function for real AI — server-side only
+2. Auth + RLS — replace `demo-user` text ownership
+3. Full schema — see `SUPABASE_SCHEMA.md` for future tables

@@ -1,5 +1,6 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useCallback } from 'react';
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TabScreenScroll } from '../../src/components/TabScreenScroll';
@@ -39,11 +40,30 @@ function StatusPill({ label, tone }: { label: string; tone: 'active' | 'complete
 
 export default function ProjectsScreen() {
   const router = useRouter();
-  const { savedProjects, generationStatus, currentJob, selectedInputImage } = useGenerationStore();
+  const {
+    savedProjects,
+    savedProjectsLoading,
+    savedProjectsError,
+    generationStatus,
+    currentJob,
+    selectedInputImage,
+    loadSavedProjects,
+  } = useGenerationStore();
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadSavedProjects();
+    }, [loadSavedProjects])
+  );
 
   const activeProjects = savedProjects.filter((p) => p.status === 'active');
   const savedConcepts = savedProjects.filter((p) => p.status === 'completed');
   const recentUploads = savedProjects.slice(0, 3);
+  const showEmpty =
+    !savedProjectsLoading &&
+    savedProjects.length === 0 &&
+    !selectedInputImage &&
+    generationStatus !== 'generating';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -62,6 +82,25 @@ export default function ProjectsScreen() {
       </View>
 
       <TabScreenScroll>
+        {savedProjectsLoading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={colors.accent} />
+            <Text style={styles.loadingText}>Loading your projects…</Text>
+          </View>
+        ) : null}
+
+        {savedProjectsError ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{savedProjectsError}</Text>
+            <Pressable
+              onPress={() => void loadSavedProjects()}
+              style={({ pressed }) => [styles.retryBtn, pressed && styles.pressed]}
+            >
+              <Text style={styles.retryText}>Try again</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {generationStatus === 'generating' && currentJob ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Active Projects</Text>
@@ -75,7 +114,7 @@ export default function ProjectsScreen() {
           </View>
         ) : null}
 
-        {savedProjects.length === 0 && !selectedInputImage ? (
+        {showEmpty ? (
           <EmptyState
             icon="business-outline"
             title="Start your first property upgrade"
@@ -83,7 +122,7 @@ export default function ProjectsScreen() {
             actionLabel="Open Visualize"
             onAction={() => router.push('/(tabs)/visualize')}
           />
-        ) : (
+        ) : savedProjects.length > 0 || generationStatus === 'generating' ? (
           <>
             {activeProjects.length > 0 ? (
               <View style={styles.section}>
@@ -116,7 +155,7 @@ export default function ProjectsScreen() {
               </View>
             ) : null}
           </>
-        )}
+        ) : null}
       </TabScreenScroll>
     </SafeAreaView>
   );
@@ -239,4 +278,23 @@ const styles = StyleSheet.create({
   compactBudget: { ...typography.caption, color: colors.accentSecondary, marginTop: 2 },
   compactStatus: { ...typography.caption, fontSize: 11, marginTop: 2, color: colors.navy },
   compactSource: { ...typography.caption, fontSize: 11, marginTop: 2 },
+  loadingWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    gap: spacing.sm,
+  },
+  loadingText: { ...typography.caption, color: colors.textSecondary },
+  errorBanner: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: '#FFF4F4',
+    borderWidth: 1,
+    borderColor: '#F5C2C2',
+  },
+  errorText: { ...typography.body, color: colors.text, marginBottom: spacing.sm },
+  retryBtn: { alignSelf: 'flex-start' },
+  retryText: { ...typography.caption, fontWeight: '700', color: colors.accent },
 });

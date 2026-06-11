@@ -41,12 +41,14 @@ export default function ResultScreen() {
     selectedGoal,
     selectedBudgetRange,
     cycleMockResult,
-    saveProject,
+    saveCurrentProject,
+    savedProjectsError,
   } = useGenerationStore();
 
   const [activeTab, setActiveTab] = useState<ResultTab>('visual');
   const [showBefore, setShowBefore] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const plan = currentUpgradePlan;
   const inputUri =
@@ -83,22 +85,20 @@ export default function ResultScreen() {
     setRegenerating(false);
   };
 
-  const handleSave = () => {
-    saveProject({
-      title: displayTitle,
-      projectType: params.projectType ?? currentJob?.toolId ?? 'property',
-      projectTypeLabel: getProjectTypeLabel(params.projectType ?? currentJob?.toolId ?? ''),
-      goal,
-      resultImageUrl: currentImageUrl,
-      inputImageUri: inputUri,
-      inputPublicUrl: uploadedInputPublicUrl ?? currentJob?.inputPublicUrl,
-      jobId: params.jobId ?? currentJob?.id,
-      jobStatus: currentJob?.status ?? 'completed',
-      status: 'completed',
-      budgetRange,
-      source: selectedInputImage?.source ?? currentJob?.source ?? 'demo',
-    });
-    Alert.alert('Saved to Projects', 'Your upgrade plan was saved to Projects.');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await saveCurrentProject();
+      Alert.alert('Saved to Projects', 'Your upgrade plan was saved to Projects.');
+    } catch {
+      Alert.alert(
+        'Could not save',
+        savedProjectsError ?? "Couldn't save this project. Please try again."
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleExport = () => {
@@ -207,10 +207,11 @@ export default function ResultScreen() {
           <Text style={styles.secondaryBtnText}>Export Plan</Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
-          onPress={handleSave}
+          style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed, saving && styles.disabledBtn]}
+          onPress={() => void handleSave()}
+          disabled={saving}
         >
-          <Text style={styles.primaryBtnText}>Save Project</Text>
+          <Text style={styles.primaryBtnText}>{saving ? 'Saving…' : 'Save Project'}</Text>
         </Pressable>
       </View>
 
@@ -334,4 +335,5 @@ const styles = StyleSheet.create({
   regenerateBtn: { alignItems: 'center', paddingVertical: spacing.sm },
   regenerateText: { ...typography.caption, fontWeight: '700', color: colors.accent },
   pressed: { opacity: interaction.pressedOpacity },
+  disabledBtn: { opacity: 0.6 },
 });
