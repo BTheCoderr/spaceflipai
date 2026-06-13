@@ -8,12 +8,23 @@ type Props = {
   steps: string[];
   loadingType: LoadingType;
   title?: string;
+  onStepChange?: (stepIndex: number) => void;
   onComplete?: () => void;
 };
 
-export function GenerationProgress({ steps, loadingType, title = 'Building your upgrade plan…', onComplete }: Props) {
+export function GenerationProgress({
+  steps,
+  loadingType,
+  title = 'Building your upgrade plan…',
+  onStepChange,
+  onComplete,
+}: Props) {
   const [stepIndex, setStepIndex] = useState(0);
   const duration = getStepDurationMs(loadingType);
+
+  useEffect(() => {
+    onStepChange?.(stepIndex);
+  }, [stepIndex, onStepChange]);
 
   useEffect(() => {
     if (stepIndex >= steps.length - 1) {

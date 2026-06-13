@@ -79,9 +79,40 @@ Mock AI generation still runs after upload — that is expected for Phase 5.
 
 ---
 
-## Optional: allow anon uploads (if upload returns 403)
+## Storage policies (required if upload returns 403)
 
-For a **public** MVP bucket, add a storage policy in Supabase SQL editor:
+If Metro shows:
+
+```text
+Upload failed … "new row violates row-level security policy" … statusCode: "403"
+```
+
+Supabase Storage has RLS enabled but **no insert policy** for your bucket yet. The app and photo read are fine — Supabase is blocking the write.
+
+### Fix (one time)
+
+1. Supabase Dashboard → **SQL Editor**
+2. Paste and run **`SUPABASE_STORAGE_SETUP.sql`** from this repo (or the SQL below)
+3. Retry Gallery/Camera upload in the app
+
+```sql
+-- MVP testing only — tighten before production (Phase 7 Auth)
+create policy "MVP anon insert design-inputs"
+  on storage.objects for insert
+  to anon, authenticated
+  with check (bucket_id = 'design-inputs');
+
+create policy "MVP anon select design-inputs"
+  on storage.objects for select
+  to anon, authenticated
+  using (bucket_id = 'design-inputs');
+```
+
+If policies already exist with other names, run the full `SUPABASE_STORAGE_SETUP.sql` (it drops/recreates MVP policies).
+
+---
+
+## Optional: legacy policy snippet
 
 ```sql
 -- MVP testing only — tighten before production

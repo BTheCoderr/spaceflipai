@@ -143,18 +143,11 @@ def write_png(path: Path, pixels: list[list[tuple[int, int, int]]]) -> None:
     path.write_bytes(png)
 
 
-def make_icon(size: int) -> list[list[tuple[int, int, int]]]:
-    pixels = new_canvas(size, size, GREEN)
-    draw_sf_mark(pixels, size // 2, size // 2, int(size * 0.72), green_bg=False)
-    # Re-draw on green: white SF inside implied by green_bg=False using white on green
-    # Actually green_bg=False uses GREEN fg on GREEN bg - fix: full green, white mark
-    pixels = new_canvas(size, size, GREEN)
-    box = int(size * 0.62)
+def draw_white_sf_on_green(pixels: list[list[tuple[int, int, int]]], cx: int, cy: int, box: int) -> None:
     letter_h = int(box * 0.42)
     letter_w = int(box * 0.16)
     gap = int(box * 0.08)
     stroke = max(4, box // 16)
-    cx, cy = size // 2, size // 2
     left_x = cx - letter_w - gap // 2
     right_x = cx + gap // 2
     top_y = cy - letter_h // 2
@@ -167,23 +160,30 @@ def make_icon(size: int) -> list[list[tuple[int, int, int]]]:
     fill_rect(pixels, right_x, top_y, stroke, letter_h, WHITE)
     fill_rect(pixels, right_x, top_y + letter_h // 2 - stroke // 2, int(letter_w * 0.72), stroke, WHITE)
     draw_arrow(pixels, cx + int(box * 0.08), cy + int(box * 0.08), int(box * 0.34))
+
+
+def make_icon(size: int) -> list[list[tuple[int, int, int]]]:
+    pixels = new_canvas(size, size, GREEN)
+    draw_white_sf_on_green(pixels, size // 2, size // 2, int(size * 0.62))
     return pixels
 
 
 def make_splash(width: int, height: int) -> list[list[tuple[int, int, int]]]:
-    pixels = new_canvas(width, height, BG)
-    box = min(width, height) // 3
-    draw_sf_mark(pixels, width // 2, height // 2 - height // 16, box, green_bg=True)
+    pixels = new_canvas(width, height, GREEN)
+    box = min(width, height) // 4
+    draw_white_sf_on_green(pixels, width // 2, height // 2 - height // 20, box)
     return pixels
 
 
 def main() -> None:
     ASSETS.mkdir(parents=True, exist_ok=True)
-    write_png(ASSETS / "icon.png", make_icon(1024))
-    write_png(ASSETS / "adaptive-icon.png", make_icon(1024))
+    icon = make_icon(1024)
+    write_png(ASSETS / "icon.png", icon)
+    write_png(ASSETS / "adaptive-icon.png", icon)
     write_png(ASSETS / "favicon.png", make_icon(192))
+    write_png(ASSETS / "splash-icon.png", make_icon(512))
     write_png(ASSETS / "splash.png", make_splash(1284, 2778))
-    print("Wrote icon.png, adaptive-icon.png, favicon.png, splash.png")
+    print("Wrote icon.png, adaptive-icon.png, favicon.png, splash-icon.png, splash.png")
 
 
 if __name__ == "__main__":

@@ -34,6 +34,9 @@ const NETWORK_ERROR_MESSAGE =
 const BUCKET_NOT_FOUND_MESSAGE =
   'Storage bucket not found. Create the design-inputs bucket in Supabase.';
 
+const STORAGE_POLICY_MESSAGE =
+  'Storage upload blocked. Add upload policies for the design-inputs bucket in Supabase.';
+
 function logUploadDiag(message: string, details?: Record<string, string | number | boolean>): void {
   if (!__DEV__) return;
   if (details) {
@@ -86,11 +89,31 @@ function isLocalUri(uri: string): boolean {
  * Converts a React Native / Expo image URI into bytes Supabase Storage can upload.
  * Uses fetch for remote URLs, then fetch for local file:// URIs, with expo-file-system fallback.
  */
+async function readLocalUriWithFileSystem(uri: string): Promise<ArrayBuffer> {
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  const buffer = base64ToArrayBuffer(base64);
+  if (buffer.byteLength === 0) {
+    throw new StorageUploadError(
+      'Could not read the selected photo. Please try another image.',
+      'network_error'
+    );
+  }
+  logUploadDiag('Local URI converted via FileSystem', { byteLength: buffer.byteLength, uriScheme: uri.split(':')[0] });
+  return buffer;
+}
+
 async function uriToUploadBody(uri: string): Promise<ArrayBuffer> {
   if (isRemoteUri(uri)) {
     try {
       const response = await fetch(uri);
       if (!response.ok) {
+        console.warn('[SpaceFlip Pro] Remote photo fetch failed:', {
+          uri,
+          status: response.status,
+          statusText: response.statusText,
+        });
         throw new StorageUploadError(NETWORK_ERROR_MESSAGE, 'network_error');
       }
       const buffer = await response.arrayBuffer();
@@ -101,11 +124,25 @@ async function uriToUploadBody(uri: string): Promise<ArrayBuffer> {
       return buffer;
     } catch (error) {
       if (error instanceof StorageUploadError) throw error;
+      console.warn('[SpaceFlip Pro] Remote photo fetch error:', error);
       throw new StorageUploadError(NETWORK_ERROR_MESSAGE, 'network_error');
     }
   }
 
   if (isLocalUri(uri)) {
+    // iOS camera/gallery URIs are most reliable via expo-file-system (fetch(file://) often fails).
+    if (uri.startsWith('file://') || uri.startsWith('ph://') || uri.startsWith('assets-library://')) {
+      try {
+        return await readLocalUriWithFileSystem(uri);
+      } catch (error) {
+        if (error instanceof StorageUploadError) {
+          console.warn('[SpaceFlip Pro] FileSystem read failed:', { uri, message: error.message });
+        } else {
+          console.warn('[SpaceFlip Pro] FileSystem read failed:', { uri, error });
+        }
+      }
+    }
+
     try {
       const response = await fetch(uri);
       if (response.ok) {
@@ -115,22 +152,15 @@ async function uriToUploadBody(uri: string): Promise<ArrayBuffer> {
           return buffer;
         }
       }
-    } catch {
-      logUploadDiag('fetch(local URI) failed — trying expo-file-system fallback');
+    } catch (error) {
+      console.warn('[SpaceFlip Pro] fetch(local URI) failed:', { uri, error });
     }
 
     try {
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      const buffer = base64ToArrayBuffer(base64);
-      if (buffer.byteLength === 0) {
-        throw new StorageUploadError(NETWORK_ERROR_MESSAGE, 'network_error');
-      }
-      logUploadDiag('Local URI converted via FileSystem', { byteLength: buffer.byteLength });
-      return buffer;
+      return await readLocalUriWithFileSystem(uri);
     } catch (error) {
       if (error instanceof StorageUploadError) throw error;
+      console.warn('[SpaceFlip Pro] Local photo read failed:', { uri, error });
       throw new StorageUploadError(NETWORK_ERROR_MESSAGE, 'network_error');
     }
   }
@@ -143,13 +173,24 @@ async function uriToUploadBody(uri: string): Promise<ArrayBuffer> {
 
 function mapSupabaseUploadError(error: { message?: string; statusCode?: string | number }): StorageUploadError {
   const message = (error.message ?? '').toLowerCase();
+  const statusCode = String(error.statusCode ?? '');
 
   if (
     message.includes('bucket not found') ||
     message.includes('does not exist') ||
-    message.includes('not found') && message.includes('bucket')
+    (message.includes('not found') && message.includes('bucket'))
   ) {
     return new StorageUploadError(BUCKET_NOT_FOUND_MESSAGE, 'bucket_not_found');
+  }
+
+  if (
+    statusCode === '403' ||
+    message.includes('row-level security') ||
+    message.includes('policy') ||
+    message.includes('unauthorized') ||
+    message.includes('permission denied')
+  ) {
+    return new StorageUploadError(STORAGE_POLICY_MESSAGE, 'upload_failed');
   }
 
   if (

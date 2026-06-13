@@ -11,9 +11,10 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#FAFAF8"
+      "backgroundColor": "#1B4332"
     },
     "ios": {
+      "icon": "./assets/icon.png",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "SpaceFlip Pro needs camera access so you can photograph properties and commercial spaces for upgrade planning.",
@@ -39,6 +40,15 @@
       "expo-router",
       "expo-asset",
       "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1B4332",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain"
+        }
+      ],
       [
         "expo-image-picker",
         {

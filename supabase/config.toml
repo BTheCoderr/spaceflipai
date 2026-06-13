@@ -1,0 +1,7 @@
+# SpaceFlip Pro — Supabase local/deploy config
+
+[project]
+# Set after: supabase link --project-ref YOUR_REF
+
+[functions.generate-upgrade-plan]
+verify_jwt = false
