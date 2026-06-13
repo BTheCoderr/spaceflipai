@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -14,8 +14,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { RemoteImage } from '../src/components/RemoteImage';
 import { ResultActionBar } from '../src/components/ResultActionBar';
 import { useGenerationStore } from '../src/lib/generationStore';
-import { getProjectTypeLabel } from '../src/data/mockProjectTypes';
-import { getResultPanelCopy } from '../src/data/mockUpgradeResults';
+import {
+  exportAndSharePlanFromViewModel,
+  ExportPlanError,
+  EXPORT_PLAN_ERROR_MESSAGE,
+} from '../src/lib/exportPlan';
+import {
+  buildResultPlanViewModel,
+  getResultDisplayImageUrl,
+} from '../src/lib/resultPlanData';
 import { colors, interaction, radius, spacing, typography } from '../src/constants/theme';
 
 type ResultTab = 'visual' | 'plan' | 'budget' | 'checklist';
@@ -49,28 +56,35 @@ export default function ResultScreen() {
   const [showBefore, setShowBefore] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
-  const plan = currentUpgradePlan;
-  const inputUri =
-    params.inputImageUrl ||
-    uploadedInputPublicUrl ||
-    currentJob?.inputPublicUrl ||
-    currentJob?.inputImageUri ||
-    selectedInputImage?.uri ||
-    '';
-  const displayTitle = params.projectTitle ?? getProjectTypeLabel(params.projectType ?? '');
-  const goal = params.goal || selectedGoal || 'Improve this property';
-  const resultUrls = plan?.resultImageUrls ?? [
-    params.imageUrl,
-    'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600',
-    'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=600',
-  ];
-  const currentImageUrl =
-    mockResultImageUrl ?? currentJob?.resultImageUrl ?? resultUrls[mockResultIndex % resultUrls.length] ?? params.imageUrl;
-  const displayImageUrl = showBefore && inputUri ? inputUri : currentImageUrl;
-  const budgetRange = plan?.budgetRange ?? selectedBudgetRange ?? '$2,500 – $7,500';
-  const projectTypeId = params.projectType ?? currentJob?.toolId ?? 'empty-commercial';
-  const panelCopy = getResultPanelCopy(projectTypeId);
+  const viewModel = useMemo(
+    () =>
+      buildResultPlanViewModel(params, {
+        selectedGoal,
+        selectedBudgetRange,
+        mockResultImageUrl,
+        mockResultIndex,
+        currentUpgradePlan,
+        currentJob,
+        uploadedInputPublicUrl,
+        selectedInputImage,
+      }),
+    [
+      params,
+      selectedGoal,
+      selectedBudgetRange,
+      mockResultImageUrl,
+      mockResultIndex,
+      currentUpgradePlan,
+      currentJob,
+      uploadedInputPublicUrl,
+      selectedInputImage,
+    ]
+  );
+
+  const displayImageUrl = getResultDisplayImageUrl(viewModel, showBefore);
+  const { displayTitle, goal, budgetRange, inputUri, panelCopy } = viewModel;
 
   const handleClose = () => {
     if (router.canGoBack()) router.back();
@@ -81,7 +95,7 @@ export default function ResultScreen() {
     if (regenerating) return;
     setRegenerating(true);
     await new Promise((r) => setTimeout(r, 800));
-    cycleMockResult([...resultUrls]);
+    cycleMockResult([...viewModel.resultUrls]);
     setRegenerating(false);
   };
 
@@ -101,8 +115,24 @@ export default function ResultScreen() {
     }
   };
 
-  const handleExport = () => {
-    Alert.alert('Export Plan', 'Client-ready PDF export coming soon.');
+  const handleExport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const { pdfUri, shared } = await exportAndSharePlanFromViewModel(viewModel);
+      if (!shared) {
+        Alert.alert(
+          'PDF ready',
+          `Sharing is not available on this device. Your plan was saved to:\n\n${pdfUri}`
+        );
+      }
+    } catch (error) {
+      const message =
+        error instanceof ExportPlanError ? error.message : EXPORT_PLAN_ERROR_MESSAGE;
+      Alert.alert('Could not export', message);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const tabs: { id: ResultTab; label: string }[] = [
@@ -160,11 +190,11 @@ export default function ResultScreen() {
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Upgrade Summary</Text>
             <Text style={styles.panelSubtitle}>{panelCopy.planSubtitle}</Text>
-            <Text style={styles.panelBody}>{plan?.summary ?? 'Your property upgrade plan is ready.'}</Text>
+            <Text style={styles.panelBody}>{viewModel.summary}</Text>
             <Text style={styles.panelMeta}>Goal: {goal}</Text>
             <Text style={styles.panelMeta}>Project type: {displayTitle}</Text>
             <Text style={styles.sectionHeading}>Notes for Contractor or Client</Text>
-            <Text style={styles.panelBody}>{plan?.contractorNotes ?? 'Scope notes will appear here.'}</Text>
+            <Text style={styles.panelBody}>{viewModel.contractorNotes}</Text>
           </View>
         ) : null}
 
@@ -177,7 +207,7 @@ export default function ResultScreen() {
               Mock estimate based on project type, goal, and visible scope. Final bids should come from licensed trades.
             </Text>
             <Text style={styles.sectionHeading}>Suggested Materials / Items</Text>
-            {(plan?.suggestedMaterials ?? []).map((item) => (
+            {viewModel.suggestedMaterials.map((item) => (
               <Text key={item} style={styles.listItem}>• {item}</Text>
             ))}
           </View>
@@ -187,7 +217,7 @@ export default function ResultScreen() {
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Priority Checklist</Text>
             <Text style={styles.panelSubtitle}>{panelCopy.checklistSubtitle}</Text>
-            {(plan?.priorityChecklist ?? []).map((item, index) => (
+            {viewModel.priorityChecklist.map((item, index) => (
               <View key={item} style={styles.checkRow}>
                 <View style={styles.checkBadge}>
                   <Text style={styles.checkBadgeText}>{index + 1}</Text>
@@ -201,10 +231,17 @@ export default function ResultScreen() {
 
       <View style={styles.footer}>
         <Pressable
-          style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
-          onPress={handleExport}
+          style={({ pressed }) => [
+            styles.secondaryBtn,
+            pressed && styles.pressed,
+            exporting && styles.disabledBtn,
+          ]}
+          onPress={() => void handleExport()}
+          disabled={exporting}
         >
-          <Text style={styles.secondaryBtnText}>Export Plan</Text>
+          <Text style={styles.secondaryBtnText}>
+            {exporting ? 'Exporting…' : 'Export Plan'}
+          </Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed, saving && styles.disabledBtn]}
