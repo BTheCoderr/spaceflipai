@@ -202,12 +202,35 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
       throw new StorageUploadError('No photo selected. Please choose an image first.', 'missing_image');
     }
 
+    if (image.source === 'demo') {
+      const upload: UploadDesignInputResult = {
+        storagePath: '',
+        publicUrl: image.uri,
+        width: image.width,
+        height: image.height,
+        mimeType: image.mimeType,
+        source: image.source,
+      };
+
+      if (__DEV__) {
+        console.log('[SpaceFlip Pro][Storage] Skipping upload for demo photo');
+      }
+
+      setState((prev) => ({
+        ...prev,
+        uploadedInputPublicUrl: upload.publicUrl,
+        uploadedInputStoragePath: undefined,
+        generationError: undefined,
+      }));
+      return upload;
+    }
+
     try {
       const upload = await uploadDesignInputImage(image);
       setState((prev) => ({
         ...prev,
         uploadedInputPublicUrl: upload.publicUrl,
-        uploadedInputStoragePath: upload.storagePath,
+        uploadedInputStoragePath: upload.storagePath || undefined,
         generationError: undefined,
       }));
       return upload;

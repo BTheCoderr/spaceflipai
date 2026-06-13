@@ -188,6 +188,29 @@ function buildMockUploadResult(image: PickedImage, userId: string): UploadDesign
   };
 }
 
+/** Demo photos are remote URLs — never upload them to Supabase Storage. */
+function buildDemoUploadResult(image: PickedImage): UploadDesignInputResult {
+  const publicUrl = image.uri.startsWith('http') ? image.uri : DEFAULT_MOCK_URL;
+
+  logUploadDiag('Skipping upload for demo photo', {
+    publicUrl,
+    source: image.source,
+  });
+
+  if (__DEV__) {
+    console.log('[SpaceFlip Pro][Storage] Skipping upload for demo photo');
+  }
+
+  return {
+    storagePath: '',
+    publicUrl,
+    width: image.width,
+    height: image.height,
+    mimeType: image.mimeType,
+    source: image.source,
+  };
+}
+
 async function uploadDesignInputImageSupabase(
   image: PickedImage,
   userId: string
@@ -216,8 +239,19 @@ async function uploadDesignInputImageSupabase(
   });
 
   if (error) {
-    logUploadDiag('Upload failed', { message: error.message, statusCode: error.statusCode ?? 'unknown' });
-    console.warn('[SpaceFlip Pro] Supabase upload failed:', error.message);
+    logUploadDiag('Upload failed', {
+      message: error.message,
+      statusCode: error.statusCode ?? 'unknown',
+      name: error.name ?? 'StorageError',
+    });
+    console.warn('[SpaceFlip Pro] Supabase upload failed:', {
+      message: error.message,
+      statusCode: error.statusCode ?? 'unknown',
+      name: error.name ?? 'StorageError',
+      bucket: DESIGN_INPUTS_BUCKET,
+      storagePath,
+      source: image.source,
+    });
     throw mapSupabaseUploadError(error);
   }
 
@@ -240,6 +274,10 @@ export async function uploadDesignInputImage(
 ): Promise<UploadDesignInputResult> {
   if (!image?.uri) {
     throw new StorageUploadError('No photo selected. Please choose an image first.', 'missing_image');
+  }
+
+  if (image.source === 'demo') {
+    return buildDemoUploadResult(image);
   }
 
   if (!hasSupabaseConfig()) {
