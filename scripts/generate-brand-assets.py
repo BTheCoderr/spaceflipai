@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate simple visible SpaceFlip Pro placeholder PNG assets (stdlib only)."""
+"""Generate visible SpaceFlip Pro PNG brand assets (stdlib only)."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ import struct
 import zlib
 from pathlib import Path
 
-GREEN = (27, 67, 50)
-GOLD = (184, 134, 11)
+GREEN = (27, 67, 50)  # #1B4332
+GOLD = (184, 135, 0)  # #B88700
 WHITE = (255, 255, 255)
-BG = (250, 250, 248)
+SPLASH_BG = (248, 247, 242)  # #F8F7F2 — visible contrast for splash screen
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "assets"
@@ -162,26 +162,35 @@ def draw_white_sf_on_green(pixels: list[list[tuple[int, int, int]]], cx: int, cy
     draw_arrow(pixels, cx + int(box * 0.08), cy + int(box * 0.08), int(box * 0.34))
 
 
-def make_icon(size: int) -> list[list[tuple[int, int, int]]]:
+def make_app_icon(size: int) -> list[list[tuple[int, int, int]]]:
+    """Full-bleed green icon for home screen / adaptive icon."""
     pixels = new_canvas(size, size, GREEN)
     draw_white_sf_on_green(pixels, size // 2, size // 2, int(size * 0.62))
     return pixels
 
 
+def make_splash_icon(size: int) -> list[list[tuple[int, int, int]]]:
+    """Green rounded mark on light background — visible on white/cream splash."""
+    pixels = new_canvas(size, size, SPLASH_BG)
+    draw_sf_mark(pixels, size // 2, size // 2, int(size * 0.58), green_bg=True)
+    return pixels
+
+
 def make_splash(width: int, height: int) -> list[list[tuple[int, int, int]]]:
-    pixels = new_canvas(width, height, GREEN)
+    """Full splash art: cream background + centered green SF mark."""
+    pixels = new_canvas(width, height, SPLASH_BG)
     box = min(width, height) // 4
-    draw_white_sf_on_green(pixels, width // 2, height // 2 - height // 20, box)
+    draw_sf_mark(pixels, width // 2, height // 2 - height // 18, box, green_bg=True)
     return pixels
 
 
 def main() -> None:
     ASSETS.mkdir(parents=True, exist_ok=True)
-    icon = make_icon(1024)
+    icon = make_app_icon(1024)
     write_png(ASSETS / "icon.png", icon)
     write_png(ASSETS / "adaptive-icon.png", icon)
-    write_png(ASSETS / "favicon.png", make_icon(192))
-    write_png(ASSETS / "splash-icon.png", make_icon(512))
+    write_png(ASSETS / "favicon.png", make_app_icon(192))
+    write_png(ASSETS / "splash-icon.png", make_splash_icon(512))
     write_png(ASSETS / "splash.png", make_splash(1284, 2778))
     print("Wrote icon.png, adaptive-icon.png, favicon.png, splash-icon.png, splash.png")
 
