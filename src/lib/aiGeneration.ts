@@ -4,6 +4,7 @@ import {
   updateGenerationJobStatus,
 } from './generationJobs';
 import { getSupabaseClient, hasSupabaseConfig } from './supabase';
+import type { AiProvider, PlanSource, UpgradePlanPayload } from './upgradePlanPayload';
 
 export const EDGE_GENERATION_STEPS = [
   'Queued',
@@ -18,6 +19,9 @@ export const EDGE_GENERATION_ERROR_MESSAGE =
 
 export type UpgradeGenerationResult = {
   resultImageUrl: string;
+  resultPayload?: UpgradePlanPayload;
+  planSource: PlanSource;
+  aiProvider: AiProvider;
   promptPreview?: string;
   source: 'edge' | 'local';
 };
@@ -26,6 +30,10 @@ type EdgeFunctionPayload = {
   ok: boolean;
   jobId?: string;
   resultImageUrl?: string;
+  resultPayload?: UpgradePlanPayload;
+  planSource?: PlanSource;
+  aiProvider?: AiProvider;
+  estimatedCostCents?: number;
   promptPreview?: string;
   error?: string;
 };
@@ -47,6 +55,8 @@ async function runLocalMockGeneration(jobId: string): Promise<UpgradeGenerationR
   }
   return {
     resultImageUrl: job.resultImageUrl,
+    planSource: 'mock',
+    aiProvider: 'mock',
     source: 'local',
   };
 }
@@ -93,6 +103,8 @@ async function runEdgeFunctionGeneration(
     console.log('[SpaceFlip Pro][AI] Edge function success', {
       jobId,
       resultImageUrl: data.resultImageUrl,
+      planSource: data.planSource ?? 'mock',
+      aiProvider: data.aiProvider ?? 'mock',
       promptPreview: data.promptPreview?.slice(0, 80),
     });
   }
@@ -102,6 +114,9 @@ async function runEdgeFunctionGeneration(
 
   return {
     resultImageUrl: data.resultImageUrl,
+    resultPayload: data.resultPayload,
+    planSource: data.planSource ?? 'mock',
+    aiProvider: data.aiProvider ?? 'mock',
     promptPreview: data.promptPreview,
     source: 'edge',
   };

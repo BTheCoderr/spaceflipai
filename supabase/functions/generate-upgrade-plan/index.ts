@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
-import { mockGenerateUpgradeImage } from '../_shared/aiProvider.ts';
+import { generateUpgradeImage, generateUpgradePlanText } from '../_shared/aiProvider.ts';
 import { buildUpgradePrompt } from '../_shared/promptBuilder.ts';
 import type {
   GenerateUpgradePlanRequest,
@@ -92,7 +92,24 @@ Deno.serve(async (req: Request) => {
     const prompt = buildUpgradePrompt(record);
     const inputImageUrl = record.input_public_url ?? record.input_image_uri ?? '';
 
-    const { resultImageUrl, estimatedCostCents } = await mockGenerateUpgradeImage({
+    const planResult = await generateUpgradePlanText({
+      projectType: record.project_type,
+      goal: record.goal,
+      budgetRange: record.budget_range,
+      notes: record.notes,
+      inputPublicUrl: inputImageUrl,
+      prompt,
+    });
+
+    if (planResult.source === 'mock') {
+      if (!Deno.env.get('GEMINI_API_KEY') && !Deno.env.get('GROQ_API_KEY')) {
+        console.warn('[generate-upgrade-plan] GEMINI_API_KEY and GROQ_API_KEY missing — using mock plan text');
+      } else {
+        console.warn('[generate-upgrade-plan] AI plan generation failed — using mock plan text');
+      }
+    }
+
+    const { resultImageUrl } = await generateUpgradeImage({
       imageUrl: inputImageUrl,
       prompt,
       projectType: record.project_type,
@@ -103,7 +120,10 @@ Deno.serve(async (req: Request) => {
       .update({
         status: 'completed',
         result_image_url: resultImageUrl,
-        estimated_cost_cents: estimatedCostCents,
+        result_payload: planResult.payload,
+        plan_source: planResult.source,
+        ai_provider: planResult.provider,
+        estimated_cost_cents: 0,
         error_message: null,
       })
       .eq('id', jobId);
@@ -119,6 +139,10 @@ Deno.serve(async (req: Request) => {
       ok: true,
       jobId,
       resultImageUrl,
+      resultPayload: planResult.payload,
+      planSource: planResult.source,
+      aiProvider: planResult.provider,
+      estimatedCostCents: 0,
       promptPreview,
     });
   } catch (error) {

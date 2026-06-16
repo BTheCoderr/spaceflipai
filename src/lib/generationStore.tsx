@@ -27,6 +27,7 @@ import {
   listDesignProjectsForUser,
   saveDesignProject,
 } from './projects';
+import type { AiProvider, PlanSource, UpgradePlanPayload } from './upgradePlanPayload';
 import { DbError } from './dbErrors';
 import {
   StorageUploadError,
@@ -83,6 +84,9 @@ type GenerationState = {
   savedProjectsError?: string;
   currentJobId?: string;
   currentJob?: GenerationJob;
+  currentResultPayload?: UpgradePlanPayload;
+  currentPlanSource?: PlanSource;
+  currentAiProvider?: AiProvider;
   uploadedInputPublicUrl?: string;
   uploadedInputStoragePath?: string;
   generationError?: string;
@@ -117,7 +121,15 @@ type GenerationContextValue = GenerationState & {
     projectTitle?: string;
     goal?: string;
   }) => void;
-  completeCurrentJobMock: (resultUrl: string, resultIndex?: number) => Promise<void>;
+  completeCurrentJobMock: (
+    resultUrl: string,
+    resultIndex?: number,
+    options?: {
+      resultPayload?: UpgradePlanPayload;
+      planSource?: PlanSource;
+      aiProvider?: AiProvider;
+    }
+  ) => Promise<void>;
   failCurrentJob: (message: string) => Promise<void>;
   clearGenerationError: () => void;
   completeMockGeneration: (resultUrl: string, resultIndex?: number) => void;
@@ -333,7 +345,15 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
   );
 
   const completeCurrentJobMock = useCallback(
-    async (resultUrl: string, resultIndex = 0) => {
+    async (
+      resultUrl: string,
+      resultIndex = 0,
+      options?: {
+        resultPayload?: UpgradePlanPayload;
+        planSource?: PlanSource;
+        aiProvider?: AiProvider;
+      }
+    ) => {
       const jobId = stateRef.current.currentJobId;
       if (!jobId) {
         setState((prev) => ({
@@ -341,6 +361,9 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
           generationStatus: 'completed',
           mockResultImageUrl: resultUrl,
           mockResultIndex: resultIndex,
+          currentResultPayload: options?.resultPayload ?? prev.currentResultPayload,
+          currentPlanSource: options?.planSource ?? prev.currentPlanSource ?? 'mock',
+          currentAiProvider: options?.aiProvider ?? prev.currentAiProvider ?? 'mock',
         }));
         return;
       }
@@ -356,6 +379,9 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         currentJob: job,
         mockResultImageUrl: resultUrl,
         mockResultIndex: resultIndex,
+        currentResultPayload: options?.resultPayload ?? prev.currentResultPayload,
+        currentPlanSource: options?.planSource ?? prev.currentPlanSource ?? 'mock',
+        currentAiProvider: options?.aiProvider ?? prev.currentAiProvider ?? 'mock',
         generationError: undefined,
       }));
     },
@@ -452,7 +478,10 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     const projectTypeId =
       current.selectedProjectTypeId ?? current.currentJob?.toolId ?? current.selectedToolId;
     const goal = current.selectedGoal ?? current.currentJob?.goal ?? 'Improve this property';
-    const budgetRange = current.currentUpgradePlan?.budgetRange ?? current.selectedBudgetRange;
+    const budgetRange =
+      current.currentResultPayload?.budgetRange ??
+      current.currentUpgradePlan?.budgetRange ??
+      current.selectedBudgetRange;
     const inputImageUrl =
       current.uploadedInputPublicUrl ??
       current.currentJob?.inputPublicUrl ??
@@ -482,10 +511,19 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         inputImageUrl,
         resultImageUrl,
         source: current.selectedInputImage?.source ?? current.currentJob?.source ?? 'demo',
-        checklist: current.currentUpgradePlan?.priorityChecklist ?? [],
-        budgetItems: current.currentUpgradePlan?.suggestedMaterials ?? [],
-        planSummary: current.currentUpgradePlan?.summary,
-        contractorNotes: current.currentUpgradePlan?.contractorNotes,
+        checklist:
+          current.currentResultPayload?.priorityChecklist ??
+          current.currentUpgradePlan?.priorityChecklist ??
+          [],
+        budgetItems:
+          current.currentResultPayload?.suggestedMaterials ??
+          current.currentUpgradePlan?.suggestedMaterials ??
+          [],
+        planSummary:
+          current.currentResultPayload?.upgradeSummary ?? current.currentUpgradePlan?.summary,
+        contractorNotes:
+          current.currentResultPayload?.contractorNotes ??
+          current.currentUpgradePlan?.contractorNotes,
       });
 
       const saved = designProjectToSavedMockProject(persisted);

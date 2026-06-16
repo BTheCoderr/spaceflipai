@@ -29,6 +29,9 @@ export type GenerationJob = {
   updatedAt: string;
   errorMessage?: string;
   estimatedCostCents?: number;
+  resultPayload?: Record<string, unknown>;
+  planSource?: string;
+  aiProvider?: string;
 };
 
 export type GenerationJobError = {
@@ -56,6 +59,9 @@ type GenerationJobRow = {
   status: string;
   source: string | null;
   estimated_cost_cents: number | null;
+  result_payload: Record<string, unknown> | null;
+  plan_source: string | null;
+  ai_provider: string | null;
   error_message: string | null;
   created_at: string;
   updated_at: string;
@@ -119,6 +125,9 @@ function rowToGenerationJob(row: GenerationJobRow): GenerationJob {
     updatedAt: row.updated_at,
     errorMessage: row.error_message ?? undefined,
     estimatedCostCents: row.estimated_cost_cents ?? undefined,
+    resultPayload: row.result_payload ?? undefined,
+    planSource: row.plan_source ?? undefined,
+    aiProvider: row.ai_provider ?? undefined,
   };
 }
 

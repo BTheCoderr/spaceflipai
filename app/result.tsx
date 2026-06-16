@@ -43,6 +43,9 @@ export default function ResultScreen() {
     mockResultImageUrl,
     mockResultIndex,
     currentUpgradePlan,
+    currentResultPayload,
+    currentPlanSource,
+    currentAiProvider,
     currentJob,
     uploadedInputPublicUrl,
     selectedGoal,
@@ -66,6 +69,9 @@ export default function ResultScreen() {
         mockResultImageUrl,
         mockResultIndex,
         currentUpgradePlan,
+        currentResultPayload,
+        currentPlanSource,
+        currentAiProvider,
         currentJob,
         uploadedInputPublicUrl,
         selectedInputImage,
@@ -77,6 +83,9 @@ export default function ResultScreen() {
       mockResultImageUrl,
       mockResultIndex,
       currentUpgradePlan,
+      currentResultPayload,
+      currentPlanSource,
+      currentAiProvider,
       currentJob,
       uploadedInputPublicUrl,
       selectedInputImage,
@@ -84,7 +93,8 @@ export default function ResultScreen() {
   );
 
   const displayImageUrl = getResultDisplayImageUrl(viewModel, showBefore);
-  const { displayTitle, goal, budgetRange, inputUri, panelCopy } = viewModel;
+  const { displayTitle, goal, budgetRange, inputUri, panelCopy, planSourceLabel, aiProviderDevLabel } =
+    viewModel;
 
   const handleClose = () => {
     if (router.canGoBack()) router.back();
@@ -152,6 +162,13 @@ export default function ResultScreen() {
         <View style={styles.iconBtn} />
       </View>
 
+      <View style={styles.planSourceRow}>
+        <Text style={styles.planSourceLabel}>{planSourceLabel}</Text>
+        {__DEV__ && aiProviderDevLabel ? (
+          <Text style={styles.aiProviderDevLabel}>{aiProviderDevLabel}</Text>
+        ) : null}
+      </View>
+
       <View style={styles.tabRow}>
         {tabs.map((tab) => (
           <Pressable
@@ -189,10 +206,18 @@ export default function ResultScreen() {
         {activeTab === 'plan' ? (
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>Upgrade Summary</Text>
-            <Text style={styles.panelSubtitle}>{panelCopy.planSubtitle}</Text>
+            <Text style={styles.panelSubtitle}>{viewModel.businessOutcome}</Text>
             <Text style={styles.panelBody}>{viewModel.summary}</Text>
             <Text style={styles.panelMeta}>Goal: {goal}</Text>
             <Text style={styles.panelMeta}>Project type: {displayTitle}</Text>
+            {viewModel.riskNotes.length > 0 ? (
+              <>
+                <Text style={styles.sectionHeading}>Planning Risks</Text>
+                {viewModel.riskNotes.map((item) => (
+                  <Text key={item} style={styles.listItem}>• {item}</Text>
+                ))}
+              </>
+            ) : null}
             <Text style={styles.sectionHeading}>Notes for Contractor or Client</Text>
             <Text style={styles.panelBody}>{viewModel.contractorNotes}</Text>
           </View>
@@ -278,6 +303,23 @@ const styles = StyleSheet.create({
   },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { ...typography.heading, flex: 1, textAlign: 'center' },
+  planSourceRow: {
+    alignItems: 'center',
+    paddingBottom: spacing.xs,
+  },
+  planSourceLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  aiProviderDevLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 10,
+    marginTop: 2,
+    opacity: 0.7,
+  },
   tabRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.md,

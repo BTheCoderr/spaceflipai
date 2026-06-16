@@ -26,7 +26,10 @@ export type ExportPlanInput = {
   contractorNotes: string;
   priorityChecklist: string[];
   suggestedMaterials: string[];
+  riskNotes: string[];
+  photoPrepTips: string[];
   generatedAt: string;
+  planSourcePdfLabel: string;
 };
 
 export type ExportPlanResult = {
@@ -160,7 +163,10 @@ export function exportPlanInputFromViewModel(viewModel: ResultPlanViewModel): Ex
     contractorNotes: viewModel.contractorNotes,
     priorityChecklist: viewModel.priorityChecklist,
     suggestedMaterials: viewModel.suggestedMaterials,
+    riskNotes: viewModel.riskNotes,
+    photoPrepTips: viewModel.photoPrepTips,
     generatedAt: new Date().toISOString(),
+    planSourcePdfLabel: viewModel.planSourcePdfLabel,
   };
 }
 
@@ -200,7 +206,10 @@ export function normalizeExportPlanInput(
       partial.suggestedMaterials && partial.suggestedMaterials.length > 0
         ? partial.suggestedMaterials
         : plan.suggestedMaterials,
+    riskNotes: partial.riskNotes ?? [],
+    photoPrepTips: partial.photoPrepTips ?? [],
     generatedAt: partial.generatedAt ?? new Date().toISOString(),
+    planSourcePdfLabel: partial.planSourcePdfLabel ?? 'Demo planning template',
   };
 }
 
@@ -375,6 +384,7 @@ export function buildPlanHtml(prepared: PreparedExportPlan): string {
 <body>
   <div class="brand">SpaceFlip Pro</div>
   <h1>SpaceFlip Pro Upgrade Plan</h1>
+  <p class="muted">${escapeHtml(prepared.planSourcePdfLabel)}</p>
   <p class="muted">Property upgrade planning report</p>
 
   <div class="meta-grid">
@@ -421,6 +431,18 @@ export function buildPlanHtml(prepared: PreparedExportPlan): string {
 
   <h2>Notes for Contractor or Client</h2>
   <p>${escapeHtml(prepared.contractorNotes)}</p>
+
+  ${
+    prepared.riskNotes.length > 0
+      ? `<h2>Planning Risks &amp; Caveats</h2>${renderList(prepared.riskNotes)}`
+      : ''
+  }
+
+  ${
+    prepared.photoPrepTips.length > 0
+      ? `<h2>Photo Prep Tips</h2>${renderList(prepared.photoPrepTips)}`
+      : ''
+  }
 
   <div class="disclaimer">${escapeHtml(DISCLAIMER)}</div>
 

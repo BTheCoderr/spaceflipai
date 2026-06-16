@@ -34,6 +34,9 @@ create table if not exists public.generation_jobs (
   status text not null default 'queued',
   source text,
   estimated_cost_cents integer,
+  result_payload jsonb not null default '{}'::jsonb,
+  plan_source text not null default 'mock',
+  ai_provider text not null default 'mock',
   error_message text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -50,6 +53,16 @@ create trigger generation_jobs_set_updated_at
   before update on public.generation_jobs
   for each row
   execute function public.set_updated_at();
+
+-- Phase 9 — AI plan text columns (safe for existing projects)
+alter table public.generation_jobs
+  add column if not exists result_payload jsonb default '{}'::jsonb;
+
+alter table public.generation_jobs
+  add column if not exists plan_source text default 'mock';
+
+alter table public.generation_jobs
+  add column if not exists ai_provider text default 'mock';
 
 -- ---------------------------------------------------------------------------
 -- design_projects

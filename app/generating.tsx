@@ -81,7 +81,11 @@ export default function GeneratingScreen() {
       try {
         const result = await runUpgradeGeneration(activeJobId);
         setStatusLabel('Upgrade plan ready');
-        await completeCurrentJobMock(result.resultImageUrl, 0);
+        await completeCurrentJobMock(result.resultImageUrl, 0, {
+          resultPayload: result.resultPayload,
+          planSource: result.planSource,
+          aiProvider: result.aiProvider,
+        });
 
         if (navigated.current) return;
         navigated.current = true;

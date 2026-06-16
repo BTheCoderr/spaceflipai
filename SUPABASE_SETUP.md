@@ -32,6 +32,22 @@ Get values from Supabase Dashboard → **Settings** → **API**.
 
 **Never** put service role keys or AI provider keys in the mobile app.
 
+### Security — what goes where
+
+| Secret | Where it belongs | Never in |
+|--------|------------------|----------|
+| `EXPO_PUBLIC_SUPABASE_URL` | Root `.env` (Expo app) | Git commits |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Root `.env` (Expo app) | Git commits |
+| `GEMINI_API_KEY` | Supabase Edge Function secrets | Expo `.env`, client code |
+| `GROQ_API_KEY` | Supabase Edge Function secrets (optional) | Expo `.env`, client code |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase secrets / server only | Expo app, `EXPO_PUBLIC_*` |
+
+Root `.env` should contain **only** the two `EXPO_PUBLIC_SUPABASE_*` values. Copy from `.env.example`. Server keys use `supabase/.env.example` as a template for local Edge Function dev (`supabase/.env.local`, gitignored).
+
+**Rotate keys immediately** if they appear in screenshots, chat, or commits. Revoke in Google AI Studio / Groq Console / Supabase Dashboard, then set new values with `supabase secrets set` (see `EDGE_FUNCTION_SETUP.md`).
+
+**Real image generation remains mocked** for MVP cost control — AI plan text only via Gemini.
+
 ### C. Restart Expo
 
 ```bash
@@ -189,8 +205,41 @@ The script creates:
 | Generation jobs (DB) | ✅ When env + tables configured |
 | Saved projects (DB) | ✅ When env + tables configured |
 | Auth | Not connected |
-| AI generation | Mocked |
+| AI plan text | ✅ Edge Function + Gemini secret (Groq optional fallback, mock fallback) |
+| AI concept image | Mocked |
 | RevenueCat | Not connected |
+
+---
+
+## Phase 9 — AI plan text columns (existing projects)
+
+If you already ran `SUPABASE_DATABASE_SETUP.sql` before Phase 9, add the new columns once:
+
+1. Supabase Dashboard → **SQL Editor**
+2. Run:
+
+```sql
+alter table public.generation_jobs
+  add column if not exists result_payload jsonb default '{}'::jsonb;
+
+alter table public.generation_jobs
+  add column if not exists plan_source text default 'mock';
+
+alter table public.generation_jobs
+  add column if not exists ai_provider text default 'mock';
+```
+
+3. Confirm in **Table Editor → generation_jobs** that `result_payload`, `plan_source`, and `ai_provider` appear.
+
+New installs can run the full updated `SUPABASE_DATABASE_SETUP.sql` (includes these columns).
+
+After a generation completes with the Edge Function deployed:
+
+- `result_payload` — JSON with `upgradeSummary`, `businessOutcome`, `budgetRange`, etc.
+- `plan_source` — `ai` when Gemini or Groq text generation succeeds; `mock` otherwise
+- `ai_provider` — `gemini`, `groq`, or `mock`
+
+See `EDGE_FUNCTION_SETUP.md` for setting `GEMINI_API_KEY` (and optional `GROQ_API_KEY`) and testing AI text generation.
 
 ---
 

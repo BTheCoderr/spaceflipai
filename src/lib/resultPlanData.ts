@@ -9,6 +9,8 @@ import {
 import type { PickedImageSource } from './imagePicker';
 import { formatSourceLabel } from './imagePicker';
 import type { GenerationJob } from './generationJobs';
+import type { AiProvider, PlanSource, UpgradePlanPayload } from './upgradePlanPayload';
+import { aiProviderDevLabel, planSourceLabel, planSourcePdfLabel } from './upgradePlanPayload';
 
 export type ResultPlanParams = {
   projectType?: string;
@@ -24,6 +26,9 @@ export type ResultPlanStoreSlice = {
   mockResultImageUrl?: string;
   mockResultIndex: number;
   currentUpgradePlan?: UpgradePlanResult;
+  currentResultPayload?: UpgradePlanPayload;
+  currentPlanSource?: PlanSource;
+  currentAiProvider?: AiProvider;
   currentJob?: GenerationJob;
   uploadedInputPublicUrl?: string;
   selectedInputImage?: { uri: string; source: PickedImageSource };
@@ -46,6 +51,13 @@ export type ResultPlanViewModel = {
   contractorNotes: string;
   priorityChecklist: string[];
   suggestedMaterials: string[];
+  riskNotes: string[];
+  photoPrepTips: string[];
+  planSource: PlanSource;
+  planSourceLabel: string;
+  planSourcePdfLabel: string;
+  aiProvider?: AiProvider;
+  aiProviderDevLabel?: string;
   resultUrls: string[];
 };
 
@@ -87,7 +99,19 @@ export function buildResultPlanViewModel(
     store.selectedInputImage?.source ?? store.currentJob?.source ?? 'demo';
 
   const panelCopy = getResultPanelCopy(projectTypeId);
-  const budgetRange = plan.budgetRange ?? store.selectedBudgetRange ?? '$2,500 – $7,500';
+  const aiPayload = store.currentResultPayload ?? parseJobResultPayload(store.currentJob?.resultPayload);
+  const planSource: PlanSource =
+    store.currentPlanSource ??
+    (store.currentJob?.planSource === 'ai' ? 'ai' : 'mock');
+  const aiProvider: AiProvider =
+    store.currentAiProvider ??
+    parseAiProvider(store.currentJob?.aiProvider) ??
+    (planSource === 'ai' ? 'gemini' : 'mock');
+  const budgetRange =
+    aiPayload?.budgetRange ??
+    plan.budgetRange ??
+    store.selectedBudgetRange ??
+    '$2,500 – $7,500';
 
   return {
     projectTypeId,
@@ -100,13 +124,42 @@ export function buildResultPlanViewModel(
     sourceLabel: formatSourceLabel(source),
     plan,
     panelCopy,
-    summary: plan.summary ?? 'Your property upgrade plan is ready.',
-    businessOutcome: panelCopy.planSubtitle,
-    contractorNotes: plan.contractorNotes ?? 'Scope notes will appear here.',
-    priorityChecklist: plan.priorityChecklist ?? [],
-    suggestedMaterials: plan.suggestedMaterials ?? [],
+    summary: aiPayload?.upgradeSummary ?? plan.summary ?? 'Your property upgrade plan is ready.',
+    businessOutcome: aiPayload?.businessOutcome ?? panelCopy.planSubtitle,
+    contractorNotes: aiPayload?.contractorNotes ?? plan.contractorNotes ?? 'Scope notes will appear here.',
+    priorityChecklist: aiPayload?.priorityChecklist ?? plan.priorityChecklist ?? [],
+    suggestedMaterials: aiPayload?.suggestedMaterials ?? plan.suggestedMaterials ?? [],
+    riskNotes: aiPayload?.riskNotes ?? [],
+    photoPrepTips: aiPayload?.photoPrepTips ?? [],
+    planSource,
+    planSourceLabel: planSourceLabel(planSource),
+    planSourcePdfLabel: planSourcePdfLabel(planSource),
+    aiProvider,
+    aiProviderDevLabel: aiProviderDevLabel(aiProvider),
     resultUrls: [...resultUrls],
   };
+}
+
+function parseAiProvider(value?: string): AiProvider | undefined {
+  if (value === 'gemini' || value === 'groq' || value === 'mock') {
+    return value;
+  }
+  return undefined;
+}
+
+function parseJobResultPayload(
+  payload?: Record<string, unknown>
+): UpgradePlanPayload | undefined {
+  if (!payload || typeof payload !== 'object') return undefined;
+  const record = payload as Record<string, unknown>;
+  if (
+    typeof record.upgradeSummary !== 'string' ||
+    typeof record.businessOutcome !== 'string' ||
+    typeof record.contractorNotes !== 'string'
+  ) {
+    return undefined;
+  }
+  return record as unknown as UpgradePlanPayload;
 }
 
 export function getResultDisplayImageUrl(

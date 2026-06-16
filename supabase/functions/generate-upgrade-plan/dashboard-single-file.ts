@@ -1,9 +1,180 @@
-import type {
-  GenerateUpgradePlanTextInput,
-  GenerateUpgradePlanTextResult,
-  UpgradePlanPayload,
-} from './types.ts';
+// @ts-nocheck
+// Dashboard paste-only — not part of Expo typecheck or modular CLI deploy.
+// =============================================================================
+// SpaceFlip Pro — generate-upgrade-plan (Phase 9, single-file Dashboard build)
+// -----------------------------------------------------------------------------
+// Paste this entire file into:
+//   Supabase Dashboard → Edge Functions → generate-upgrade-plan → Edit source
+//
+// Behavior matches the local modular version:
+//   - Provider order: Gemini (vision) → Groq (text) → mock fallback
+//   - Image generation stays MOCKED (Unsplash URLs by project type)
+//   - Never fails the user flow on AI errors — always completes the job
+//   - Secrets read from Deno.env (GEMINI_API_KEY, GROQ_API_KEY)
+//   - verify_jwt=false compatible (app invokes with anon key)
+//
+// Required Edge Function secrets (already managed via Supabase secrets):
+//   GEMINI_API_KEY            (primary)
+//   GROQ_API_KEY              (optional fallback)
+//   SUPABASE_URL              (auto-provided by platform)
+//   SUPABASE_SERVICE_ROLE_KEY (auto-provided by platform)
+//
+// Optional provider controls (Supabase secrets):
+//   GEMINI_DISABLED=true              skip Gemini entirely
+//   AI_PROVIDER_PREFERENCE=auto       auto | gemini | groq (default: auto)
+//   On Gemini 429, Groq is tried immediately (no Gemini retry).
+// =============================================================================
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+
+// -----------------------------------------------------------------------------
+// Types (inlined from _shared/types.ts)
+// -----------------------------------------------------------------------------
+type UpgradePlanPayload = {
+  upgradeSummary: string;
+  businessOutcome: string;
+  budgetRange: string;
+  suggestedMaterials: string[];
+  priorityChecklist: string[];
+  contractorNotes: string;
+  riskNotes: string[];
+  photoPrepTips: string[];
+};
+
+type PlanSource = 'ai' | 'mock';
+type AiProvider = 'gemini' | 'groq' | 'mock';
+
+type GenerationJobRecord = {
+  id: string;
+  user_id: string;
+  project_type: string;
+  goal: string | null;
+  budget_range: string | null;
+  notes: string | null;
+  input_image_uri: string | null;
+  input_storage_path: string | null;
+  input_public_url: string | null;
+  result_image_url: string | null;
+  result_payload: UpgradePlanPayload | null;
+  plan_source: string | null;
+  ai_provider: string | null;
+  status: string;
+  source: string | null;
+  estimated_cost_cents: number | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type GenerateUpgradePlanTextInput = {
+  projectType: string;
+  goal: string | null;
+  budgetRange: string | null;
+  notes: string | null;
+  inputPublicUrl: string;
+  prompt: string;
+};
+
+type GenerateUpgradePlanTextResult = {
+  payload: UpgradePlanPayload;
+  source: PlanSource;
+  provider: AiProvider;
+  estimatedCostCents: number;
+};
+
+type GenerateUpgradePlanRequest = {
+  jobId: string;
+  userId?: string;
+};
+
+type GenerateUpgradePlanResponse = {
+  ok: boolean;
+  jobId?: string;
+  resultImageUrl?: string;
+  resultPayload?: UpgradePlanPayload;
+  planSource?: PlanSource;
+  aiProvider?: AiProvider;
+  estimatedCostCents?: number;
+  promptPreview?: string;
+  functionVersion?: string;
+  error?: string;
+};
+
+type GenerateUpgradeImageInput = {
+  imageUrl: string;
+  prompt: string;
+  projectType: string;
+};
+
+type GenerateUpgradeImageResult = {
+  resultImageUrl: string;
+  estimatedCostCents: number;
+};
+
+// -----------------------------------------------------------------------------
+// Prompt builder (inlined from _shared/promptBuilder.ts)
+// -----------------------------------------------------------------------------
+const PROJECT_PROMPTS: Record<string, string> = {
+  'airbnb-unit':
+    'Create a realistic property upgrade concept for this Airbnb unit. Focus on stronger listing photo appeal, guest confidence, brighter staging, practical furniture placement, and a budget-aware checklist. Preserve room structure, windows, doors, and flooring unless the user requested changes.',
+  'office-space':
+    'Create a realistic office upgrade concept. Focus on desk layout, walking paths, meeting zones, reception flow, and professional appearance.',
+  'retail-store':
+    'Create a realistic retail improvement concept. Focus on customer flow, product visibility, checkout path, display zones, and storefront appeal.',
+  restaurant:
+    'Create a realistic restaurant upgrade concept. Focus on seating mix, guest paths, waiting areas, service flow, and front-of-house clarity.',
+  'salon-studio':
+    'Create a realistic salon or studio upgrade concept. Focus on station layout, client flow, reception queue, and premium presentation.',
+  'backyard-landscape':
+    'Create a realistic curb appeal and outdoor upgrade concept. Focus on low-maintenance improvements, lighting, seating zones, plant groupings, and property value.',
+  'home-exterior':
+    'Create a realistic home exterior upgrade concept. Focus on curb appeal, entry presentation, lighting, trim, and perceived property value.',
+  'real-estate-listing':
+    'Create a realistic listing prep upgrade concept. Focus on buyer appeal, photo-ready staging, decluttering, and rooms buyers see first online.',
+  'empty-commercial':
+    'Create a realistic empty commercial shell upgrade concept. Focus on tenant-ready zoning, storefront appeal, clear use zones, and leasable presentation.',
+};
+
+const DEFAULT_PROMPT =
+  'Create a realistic property upgrade concept for this commercial or residential space. Focus on practical improvements, budget-aware scope, and preserving structural elements unless the user requested changes.';
+
+function formatBudget(budgetRange: string | null): string {
+  if (!budgetRange?.trim()) return 'Budget: not specified — suggest practical phased options.';
+  return `Budget range: ${budgetRange.trim()}.`;
+}
+
+function formatGoal(goal: string | null): string {
+  if (!goal?.trim()) return 'Primary goal: improve the property for its intended use.';
+  return `Primary goal: ${goal.trim()}.`;
+}
+
+function formatNotes(notes: string | null): string {
+  if (!notes?.trim()) return '';
+  return `Additional notes: ${notes.trim()}`;
+}
+
+function buildUpgradePrompt(job: GenerationJobRecord): string {
+  const projectType = job.project_type ?? 'empty-commercial';
+  const typePrompt = PROJECT_PROMPTS[projectType] ?? DEFAULT_PROMPT;
+  const imageUrl = job.input_public_url ?? job.input_image_uri ?? '';
+
+  const sections = [
+    'SpaceFlip Pro — property upgrade concept request.',
+    `Project type: ${projectType.replace(/-/g, ' ')}.`,
+    typePrompt,
+    formatGoal(job.goal),
+    formatBudget(job.budget_range),
+    formatNotes(job.notes),
+    imageUrl ? `Input property photo: ${imageUrl}` : 'Input property photo: not provided.',
+    'Output: one realistic upgraded concept image plus a practical upgrade plan. Preserve architecture unless scope says otherwise.',
+  ].filter(Boolean);
+
+  return sections.join('\n\n');
+}
+
+// -----------------------------------------------------------------------------
+// AI provider + mocks (inlined from _shared/aiProvider.ts)
+// -----------------------------------------------------------------------------
 const MOCK_RESULTS: Record<string, string> = {
   'airbnb-unit': 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600',
   'office-space': 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600',
@@ -90,17 +261,6 @@ const DEFAULT_MOCK_PLAN: Omit<UpgradePlanPayload, 'budgetRange'> = {
   photoPrepTips: ['Clean surfaces and improve lighting before photos', 'Capture wide angles of priority zones'],
 };
 
-export type GenerateUpgradeImageInput = {
-  imageUrl: string;
-  prompt: string;
-  projectType: string;
-};
-
-export type GenerateUpgradeImageResult = {
-  resultImageUrl: string;
-  estimatedCostCents: number;
-};
-
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GROQ_MODEL = 'llama-3.1-8b-instant';
 
@@ -121,17 +281,6 @@ function isGeminiDisabled(): boolean {
   return Deno.env.get('GEMINI_DISABLED') === 'true';
 }
 
-function redactSecrets(text: unknown): string {
-  let out = typeof text === 'string' ? text : String(text ?? '');
-  out = out.replace(/(api[_-]?key|key)\s*[=:]\s*["']?[A-Za-z0-9._\-]+["']?/gi, '$1=[REDACTED]');
-  out = out.replace(/AIza[0-9A-Za-z._\-]{10,}/g, '[REDACTED]');
-  out = out.replace(/AQ\.[0-9A-Za-z._\-]{10,}/g, '[REDACTED]');
-  out = out.replace(/gsk_[0-9A-Za-z]{10,}/g, '[REDACTED]');
-  out = out.replace(/Bearer\s+[0-9A-Za-z._\-]+/gi, 'Bearer [REDACTED]');
-  out = out.replace(/https?:\/\/generativelanguage\.googleapis\.com\/\S*/gi, '[REDACTED_URL]');
-  return out.slice(0, 200);
-}
-
 const UPGRADE_PLAN_JSON_SCHEMA = `{
   "upgradeSummary": "string — 2-4 sentences summarizing the upgrade plan",
   "businessOutcome": "string — expected business or property outcome",
@@ -142,6 +291,29 @@ const UPGRADE_PLAN_JSON_SCHEMA = `{
   "riskNotes": ["string array of 2-4 planning risks or caveats"],
   "photoPrepTips": ["string array of 2-4 photo prep tips"]
 }`;
+
+/**
+ * Removes anything that looks like a provider API key, an `key=`/`api_key=`
+ * query param, or a full generativelanguage URL (which carries the key) so it
+ * is never written to Supabase logs. Behavior-neutral — log sanitation only.
+ */
+function redactSecrets(text: unknown): string {
+  let out = typeof text === 'string' ? text : String(text ?? '');
+
+  // key=... or api_key=... in query strings or JSON
+  out = out.replace(/(api[_-]?key|key)\s*[=:]\s*["']?[A-Za-z0-9._\-]+["']?/gi, '$1=[REDACTED]');
+  // Google Gemini key prefix (e.g. AIza..., AQ....)
+  out = out.replace(/AIza[0-9A-Za-z._\-]{10,}/g, '[REDACTED]');
+  out = out.replace(/AQ\.[0-9A-Za-z._\-]{10,}/g, '[REDACTED]');
+  // Groq key prefix
+  out = out.replace(/gsk_[0-9A-Za-z]{10,}/g, '[REDACTED]');
+  // Bearer tokens
+  out = out.replace(/Bearer\s+[0-9A-Za-z._\-]+/gi, 'Bearer [REDACTED]');
+  // Full generativelanguage URLs carry the key in the query string
+  out = out.replace(/https?:\/\/generativelanguage\.googleapis\.com\/\S*/gi, '[REDACTED_URL]');
+
+  return out.slice(0, 200);
+}
 
 function resolveBudgetRange(budgetRange: string | null): string {
   if (!budgetRange?.trim() || budgetRange.trim() === 'Not sure yet') {
@@ -242,7 +414,7 @@ function buildUpgradePlanPrompt(input: GenerateUpgradePlanTextInput): string {
     .join('\n');
 }
 
-export function mockGenerateUpgradePlanText(input: GenerateUpgradePlanTextInput): UpgradePlanPayload {
+function mockGenerateUpgradePlanText(input: GenerateUpgradePlanTextInput): UpgradePlanPayload {
   const base = MOCK_PLAN_BY_TYPE[input.projectType] ?? DEFAULT_MOCK_PLAN;
   const goalNote = input.goal?.trim() ? ` Goal focus: ${input.goal.trim()}.` : '';
   const notesNote = input.notes?.trim() ? ` Notes: ${input.notes.trim()}.` : '';
@@ -279,10 +451,9 @@ async function fetchImageForGemini(
 
     return { mimeType, data: btoa(binary) };
   } catch (error) {
-    console.warn(
-      '[aiProvider] Property photo fetch threw:',
-      error instanceof Error ? error.message : error
-    );
+    console.warn('[aiProvider] Property photo fetch threw', {
+      message: redactSecrets(error instanceof Error ? error.message : error),
+    });
     return null;
   }
 }
@@ -394,11 +565,7 @@ async function generateWithGroqOptional(
   return parseUpgradePlanPayload(parsed, budgetRange);
 }
 
-/**
- * Generates structured upgrade plan text via Gemini (primary), Groq (optional fallback),
- * otherwise returns a mock payload.
- */
-export async function generateUpgradePlanText(
+async function generateUpgradePlanText(
   input: GenerateUpgradePlanTextInput
 ): Promise<GenerateUpgradePlanTextResult> {
   const geminiKey = Deno.env.get('GEMINI_API_KEY');
@@ -463,11 +630,13 @@ export async function generateUpgradePlanText(
     }
   };
 
+  // Groq-only preference
   if (preference === 'groq') {
     const groqResult = await tryGroq();
     return groqResult ?? mockFallback();
   }
 
+  // Gemini-only preference (429 still falls through to Groq for MVP stability)
   if (preference === 'gemini') {
     const { result, rateLimited } = await tryGemini();
     if (result) return result;
@@ -478,6 +647,7 @@ export async function generateUpgradePlanText(
     return mockFallback();
   }
 
+  // auto — Gemini → Groq → mock (no Gemini retry on 429)
   const { result: geminiResult, rateLimited } = await tryGemini();
   if (geminiResult) return geminiResult;
 
@@ -493,26 +663,178 @@ export async function generateUpgradePlanText(
   return mockFallback();
 }
 
-/**
- * Placeholder AI provider — returns a mock result URL by project type.
- * Real image generation remains mocked until a later phase.
- */
-export async function generateUpgradeImage(
-  input: GenerateUpgradeImageInput
-): Promise<GenerateUpgradeImageResult> {
-  return mockGenerateUpgradeImage(input);
-}
-
-export async function mockGenerateUpgradeImage(
+// Image generation stays mocked for MVP cost control.
+async function generateUpgradeImage(
   input: GenerateUpgradeImageInput
 ): Promise<GenerateUpgradeImageResult> {
   const resultImageUrl = MOCK_RESULTS[input.projectType] ?? DEFAULT_MOCK;
-
-  // Simulate provider latency without calling external AI.
   await new Promise((resolve) => setTimeout(resolve, 400));
-
-  return {
-    resultImageUrl,
-    estimatedCostCents: 0,
-  };
+  return { resultImageUrl, estimatedCostCents: 0 };
 }
+
+// -----------------------------------------------------------------------------
+// HTTP handler (inlined from generate-upgrade-plan/index.ts)
+// -----------------------------------------------------------------------------
+const DEMO_USER_ID = 'demo-user';
+const FUNCTION_VERSION = 'phase9-dashboard-gemini-v2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+function jsonResponse(body: GenerateUpgradePlanResponse, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  if (req.method !== 'POST') {
+    return jsonResponse({ ok: false, error: 'Method not allowed' }, 405);
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    console.error('[generate-upgrade-plan] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    return jsonResponse({ ok: false, error: 'Server configuration error' }, 500);
+  }
+
+  let body: GenerateUpgradePlanRequest;
+  try {
+    body = (await req.json()) as GenerateUpgradePlanRequest;
+  } catch {
+    return jsonResponse({ ok: false, error: 'Invalid JSON body' }, 400);
+  }
+
+  const jobId = body.jobId?.trim();
+  const userId = body.userId?.trim() || DEMO_USER_ID;
+
+  if (!jobId) {
+    return jsonResponse({ ok: false, error: 'jobId is required' }, 400);
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  const { data: job, error: fetchError } = await supabase
+    .from('generation_jobs')
+    .select('*')
+    .eq('id', jobId)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error('[generate-upgrade-plan] Fetch job failed:', fetchError.message);
+    return jsonResponse({ ok: false, error: 'Could not load generation job' }, 500);
+  }
+
+  if (!job) {
+    return jsonResponse({ ok: false, error: 'Generation job not found' }, 404);
+  }
+
+  const record = job as GenerationJobRecord;
+
+  if (record.user_id !== userId) {
+    return jsonResponse({ ok: false, error: 'User does not match job' }, 403);
+  }
+
+  const { error: processingError } = await supabase
+    .from('generation_jobs')
+    .update({ status: 'processing', error_message: null })
+    .eq('id', jobId);
+
+  if (processingError) {
+    console.error('[generate-upgrade-plan] Update processing failed:', processingError.message);
+    return jsonResponse({ ok: false, error: 'Could not update job status' }, 500);
+  }
+
+  try {
+    const prompt = buildUpgradePrompt(record);
+    const inputImageUrl = record.input_public_url ?? record.input_image_uri ?? '';
+
+    const planResult = await generateUpgradePlanText({
+      projectType: record.project_type,
+      goal: record.goal,
+      budgetRange: record.budget_range,
+      notes: record.notes,
+      inputPublicUrl: inputImageUrl,
+      prompt,
+    });
+
+    if (planResult.source === 'mock') {
+      if (!Deno.env.get('GEMINI_API_KEY') && !Deno.env.get('GROQ_API_KEY')) {
+        console.warn('[generate-upgrade-plan] GEMINI_API_KEY and GROQ_API_KEY missing — using mock plan text');
+      } else {
+        console.warn('[generate-upgrade-plan] AI plan generation failed — using mock plan text');
+      }
+    }
+
+    const { resultImageUrl } = await generateUpgradeImage({
+      imageUrl: inputImageUrl,
+      prompt,
+      projectType: record.project_type,
+    });
+
+    const resultPayload = planResult.payload;
+    const planSource = planResult.source;
+    const aiProvider = planResult.provider;
+    const estimatedCostCents = 0;
+
+    const { error: completeError } = await supabase
+      .from('generation_jobs')
+      .update({
+        status: 'completed',
+        result_image_url: resultImageUrl,
+        result_payload: resultPayload,
+        plan_source: planSource,
+        ai_provider: aiProvider,
+        estimated_cost_cents: estimatedCostCents,
+        error_message: null,
+      })
+      .eq('id', jobId);
+
+    if (completeError) {
+      console.error('[generate-upgrade-plan] Complete job failed:', completeError.message);
+      return jsonResponse({ ok: false, error: 'Could not save generation result' }, 500);
+    }
+
+    const promptPreview = prompt.length > 280 ? `${prompt.slice(0, 277)}...` : prompt;
+
+    console.log('[generate-upgrade-plan] functionVersion', FUNCTION_VERSION);
+    console.log('[generate-upgrade-plan] planSource', planSource);
+    console.log('[generate-upgrade-plan] aiProvider', aiProvider);
+    console.log('[generate-upgrade-plan] resultPayload keys', Object.keys(resultPayload ?? {}));
+
+    return jsonResponse({
+      ok: true,
+      jobId,
+      resultImageUrl,
+      resultPayload,
+      planSource,
+      aiProvider,
+      estimatedCostCents,
+      promptPreview,
+      functionVersion: FUNCTION_VERSION,
+    });
+  } catch (error) {
+    const rawMessage = error instanceof Error ? error.message : 'Generation failed';
+    const message = redactSecrets(rawMessage);
+
+    await supabase
+      .from('generation_jobs')
+      .update({ status: 'failed', error_message: message })
+      .eq('id', jobId);
+
+    console.error('[generate-upgrade-plan] Generation failed:', message);
+    return jsonResponse({ ok: false, error: message }, 500);
+  }
+});
