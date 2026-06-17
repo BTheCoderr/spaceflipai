@@ -1,11 +1,19 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { siteConfig } from '../config/site';
+import { mailto, siteConfig } from '../config/site';
 
 const navLinks = [
   { to: '/', label: 'Home', end: true },
   { to: '/support', label: 'Support' },
   { to: '/privacy', label: 'Privacy' },
   { to: '/terms', label: 'Terms' },
+];
+
+const footerLinks = [
+  { to: '/', label: 'Home' },
+  { to: '/support', label: 'Support' },
+  { to: '/privacy', label: 'Privacy' },
+  { to: '/terms', label: 'Terms' },
+  { to: '/delete-data', label: 'Delete Data' },
 ];
 
 export function Layout() {
@@ -38,19 +46,28 @@ export function Layout() {
 
       <footer className="footer">
         <div className="container footer-inner">
-          <div>
+          <div className="footer-about">
             <p className="footer-brand">{siteConfig.name}</p>
+            <p className="footer-note">{siteConfig.tagline}</p>
             <p className="footer-note">MVP testing mode — payments are not active.</p>
+            <a className="footer-email" href={mailto()}>
+              {siteConfig.supportEmail}
+            </a>
           </div>
           <div className="footer-links">
-            <Link to="/support">Support</Link>
-            <Link to="/privacy">Privacy</Link>
-            <Link to="/terms">Terms</Link>
-            <Link to="/delete-data">Delete Data</Link>
+            {footerLinks.map((link) => (
+              <Link key={link.to} to={link.to}>
+                {link.label}
+              </Link>
+            ))}
+            <a href={mailto()}>Contact</a>
           </div>
         </div>
         <div className="container footer-bottom">
-          <p>© {new Date().getFullYear()} {siteConfig.companyName}. All rights reserved.</p>
+          <p>
+            © {new Date().getFullYear()} {siteConfig.companyName}. Concept images are planning
+            references. Verify pricing, permits, and safety with qualified professionals.
+          </p>
         </div>
       </footer>
     </div>

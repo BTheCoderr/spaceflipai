@@ -1,7 +1,15 @@
 import { PageShell } from '../components/PageShell';
 import { mailto, siteConfig } from '../config/site';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export function TermsPage() {
+  usePageMeta({
+    title: 'Terms of Use',
+    description:
+      'SpaceFlip Pro Terms of Use — MVP testing mode, planning drafts, concept references, and user responsibilities.',
+    path: '/terms',
+  });
+
   return (
     <PageShell
       title="Terms of Use"

@@ -1,7 +1,15 @@
 import { PageShell } from '../components/PageShell';
 import { mailto, siteConfig } from '../config/site';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export function PrivacyPage() {
+  usePageMeta({
+    title: 'Privacy Policy',
+    description:
+      'SpaceFlip Pro Privacy Policy — what data we collect, how we use it, third-party services, and your choices.',
+    path: '/privacy',
+  });
+
   return (
     <PageShell
       title="Privacy Policy"

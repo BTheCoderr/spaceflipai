@@ -1,7 +1,15 @@
 import { PageShell } from '../components/PageShell';
 import { mailto, siteConfig } from '../config/site';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 export function DeleteDataPage() {
+  usePageMeta({
+    title: 'Delete Data',
+    description:
+      'How to delete saved SpaceFlip Pro projects in the app or request data deletion by email.',
+    path: '/delete-data',
+  });
+
   return (
     <PageShell
       title="Delete Your Data"

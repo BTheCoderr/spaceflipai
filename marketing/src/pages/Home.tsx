@@ -1,16 +1,12 @@
 import { Link } from 'react-router-dom';
-import { siteConfig } from '../config/site';
-
-const audiences = [
-  'Airbnb hosts',
-  'Landlords',
-  'Realtors',
-  'Contractors',
-  'Small businesses',
-  'Offices',
-  'Retail and storefronts',
-  'Landscapers / exterior upgrade planning',
-];
+import { AudienceCards } from '../components/AudienceCards';
+import { PdfValueSection } from '../components/PdfValueSection';
+import { PositioningSection } from '../components/PositioningSection';
+import { ProductFlow } from '../components/ProductFlow';
+import { ScreenshotMockups } from '../components/ScreenshotMockups';
+import { TrustSection } from '../components/TrustSection';
+import { mailto, siteConfig } from '../config/site';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const features = [
   {
@@ -18,48 +14,39 @@ const features = [
     body: 'Practical planning drafts based on your property photo and project goals.',
   },
   {
-    title: 'Budget ranges',
-    body: 'Helpful budget bands to frame decisions — not final contractor quotes.',
-  },
-  {
-    title: 'Materials list',
-    body: 'Suggested materials to discuss with trades and suppliers.',
-  },
-  {
-    title: 'Priority checklist',
-    body: 'Ordered next steps for staging, renovation, or tenant-ready upgrades.',
-  },
-  {
-    title: 'Contractor / client notes',
-    body: 'Scope-style notes you can share in planning conversations.',
-  },
-  {
-    title: 'PDF export',
-    body: 'Export a client-ready planning PDF from saved results.',
+    title: 'Business advisor agents',
+    body: 'Preview-only advisors that route into Visualize workflows by project type.',
   },
   {
     title: 'Saved projects',
-    body: 'Keep plans organized for repeat visits and handoffs.',
+    body: 'Keep plans organized for repeat visits, exports, and handoffs.',
   },
   {
-    title: 'Business advisor agents',
-    body: 'Preview-only business advisors that route into Visualize workflows.',
+    title: 'Honest MVP labeling',
+    body: 'Concept references and fallback plans are clearly labeled in the app.',
   },
 ];
 
 export function HomePage() {
+  usePageMeta({
+    title: 'AI Property Upgrade Plans',
+    description: siteConfig.description,
+    path: '/',
+  });
+
   return (
     <>
-      <section className="hero">
+      <section className="hero hero-strong">
         <div className="container hero-grid">
           <div className="hero-copy">
-            <p className="gold-accent" style={{ margin: '0 0 0.5rem', fontWeight: 700 }}>
-              SpaceFlip Pro
-            </p>
+            <p className="hero-kicker">SpaceFlip Pro</p>
             <h1>AI upgrade plans for properties and spaces</h1>
-            <p>
+            <p className="hero-subhead">
               Upload a property photo, generate a practical upgrade plan, and export a
-              client-ready PDF.
+              client-ready PDF with budget, materials, checklist, and contractor notes.
+            </p>
+            <p className="hero-audience">
+              Built for Airbnb hosts, landlords, realtors, contractors, and small businesses.
             </p>
             <div className="hero-actions">
               {siteConfig.appStoreLive ? (
@@ -76,52 +63,41 @@ export function HomePage() {
                   Coming soon on the App Store
                 </span>
               )}
-              <Link className="btn btn-secondary" to="/support">
-                Get Support
-              </Link>
+              <a className="btn btn-secondary" href={mailto()}>
+                Contact support
+              </a>
             </div>
             {!siteConfig.appStoreLive ? (
               <p className="coming-soon-note">
-                App Store listing is in preparation. Support and legal pages are available now
+                App Store listing is in preparation. Support, privacy, and terms pages are live
                 for App Store Connect.
               </p>
             ) : null}
           </div>
 
-          <div className="hero-card">
-            <h2>Built for business use</h2>
+          <div className="hero-card hero-card-accent">
+            <h2>What you get</h2>
             <ul>
-              <li>Property and commercial upgrade planning</li>
-              <li>Honest MVP labeling for concept references</li>
-              <li>No payments active in the current build</li>
+              <li>Structured upgrade plan from a property photo</li>
+              <li>Budget range, materials, and priority checklist</li>
+              <li>PDF export for client and contractor handoff</li>
+              <li>Concept images labeled as planning references</li>
             </ul>
+            <p className="hero-card-note">Payments are not active in the current MVP build.</p>
           </div>
         </div>
       </section>
 
-      <section className="section">
-        <div className="container">
-          <h2 className="section-title">Who it is for</h2>
-          <p className="section-lead">
-            SpaceFlip Pro helps operators and professionals turn property photos into
-            actionable planning drafts.
-          </p>
-          <div className="chips">
-            {audiences.map((item) => (
-              <span key={item} className="chip">
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
+      <ProductFlow />
+      <ScreenshotMockups />
+      <AudienceCards />
+      <PdfValueSection />
+      <PositioningSection />
 
       <section className="section">
         <div className="container">
-          <h2 className="section-title">Features</h2>
-          <p className="section-lead">
-            Core MVP capabilities available in the mobile app today.
-          </p>
+          <h2 className="section-title">Core capabilities</h2>
+          <p className="section-lead">Available in the SpaceFlip Pro mobile app today.</p>
           <div className="grid-2">
             {features.map((feature) => (
               <div key={feature.title} className="card">
@@ -133,31 +109,24 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="section">
-        <div className="container">
-          <div className="notice">
-            <strong>Honest MVP note</strong>
-            <p>
-              Concept images are planning references, not final renders. Final pricing, safety,
-              permits, and design decisions should be verified with qualified professionals.
-            </p>
-            <p style={{ marginTop: '0.75rem' }}>
-              Payments are not active in the current MVP build. Advisor chat is preview-only and
-              routes into Visualize planning workflows.
-            </p>
-          </div>
-        </div>
-      </section>
+      <TrustSection />
 
-      <section className="section">
+      <section className="section section-cta">
         <div className="container">
-          <div className="card contact-box">
-            <h3>Need help?</h3>
+          <div className="card cta-card">
+            <h2>Questions before launch?</h2>
             <p>
-              Visit our{' '}
-              <Link to="/support">Support page</Link> or email{' '}
-              <a href={`mailto:${siteConfig.supportEmail}`}>{siteConfig.supportEmail}</a>.
+              Visit <Link to="/support">Support</Link> or email{' '}
+              <a href={mailto()}>{siteConfig.supportEmail}</a>.
             </p>
+            <div className="hero-actions">
+              <Link className="btn btn-primary" to="/support">
+                Go to Support
+              </Link>
+              <Link className="btn btn-secondary" to="/privacy">
+                Privacy Policy
+              </Link>
+            </div>
           </div>
         </div>
       </section>
