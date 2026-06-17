@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TabScreenScroll } from '../../src/components/TabScreenScroll';
-import { advisors } from '../../src/data/mockAdvisors';
+import { advisorAgents } from '../../src/data/advisorAgents';
 import { colors, interaction, radius, shadows, spacing, typography } from '../../src/constants/theme';
 
 export default function AdvisorsScreen() {
@@ -20,7 +20,7 @@ export default function AdvisorsScreen() {
       </View>
 
       <TabScreenScroll contentContainerStyle={styles.scroll}>
-        {advisors.map((advisor) => (
+        {advisorAgents.map((advisor) => (
           <Pressable
             key={advisor.id}
             style={({ pressed }) => [styles.card, pressed && styles.pressed]}
@@ -31,8 +31,8 @@ export default function AdvisorsScreen() {
             </View>
             <View style={styles.cardBody}>
               <Text style={styles.cardTitle}>{advisor.name}</Text>
-              <Text style={styles.cardRole}>{advisor.role}</Text>
-              <Text style={styles.cardTagline} numberOfLines={2}>{advisor.tagline}</Text>
+              <Text style={styles.cardRole}>{advisor.subtitle}</Text>
+              <Text style={styles.cardTagline} numberOfLines={2}>{advisor.focus}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </Pressable>

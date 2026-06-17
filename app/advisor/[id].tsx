@@ -2,13 +2,14 @@ import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { getAdvisorById } from '../../src/data/mockAdvisors';
+import { getAdvisorAgentById } from '../../src/data/advisorAgents';
+import { getProjectTypeById } from '../../src/data/mockProjectTypes';
 import { colors, interaction, radius, shadows, spacing, typography } from '../../src/constants/theme';
 
 export default function AdvisorDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const advisor = getAdvisorById(id);
+  const advisor = getAdvisorAgentById(id);
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
@@ -30,10 +31,17 @@ export default function AdvisorDetailScreen() {
     );
   }
 
-  // Suggested questions a user might ask this advisor (preview only).
-  const suggestedQuestions = advisor.starterMessages
-    .filter((m) => m.role === 'user')
-    .map((m) => m.text);
+  const recommendedType = advisor.recommendedProjectTypes[0];
+  const recommendedLabel = getProjectTypeById(recommendedType)?.label ?? 'a plan';
+
+  // Both CTAs route into the existing, working Visualize/Groq pipeline.
+  const startRecommendedPlan = () => {
+    router.push(`/project-intake/${recommendedType}`);
+  };
+
+  const openVisualizePicker = () => {
+    router.push('/(tabs)/visualize');
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -53,49 +61,70 @@ export default function AdvisorDetailScreen() {
             <Ionicons name={advisor.icon} size={26} color={colors.accent} />
           </View>
           <Text style={styles.advisorName}>{advisor.name}</Text>
-          <Text style={styles.advisorRole}>{advisor.role}</Text>
-          <Text style={styles.advisorDescription}>{advisor.description}</Text>
+          <Text style={styles.advisorRole}>{advisor.subtitle}</Text>
+          <Text style={styles.advisorDescription}>{advisor.focus}</Text>
         </View>
 
-        <Text style={styles.sectionTitle}>What this advisor focuses on</Text>
+        <Text style={styles.sectionTitle}>Best for</Text>
+        <View style={styles.chipWrap}>
+          {advisor.bestFor.map((chip) => (
+            <View key={chip} style={styles.chip}>
+              <Text style={styles.chipText}>{chip}</Text>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>Starter questions</Text>
         <View style={styles.card}>
-          <Text style={styles.cardLead}>{advisor.tagline}</Text>
-          {suggestedQuestions.length > 0 ? (
-            <>
-              <Text style={styles.cardSubheading}>Questions it can help you think through</Text>
-              {suggestedQuestions.map((q) => (
-                <View key={q} style={styles.questionRow}>
-                  <Ionicons
-                    name="chatbubble-ellipses-outline"
-                    size={16}
-                    color={colors.textSecondary}
-                    style={styles.questionIcon}
-                  />
-                  <Text style={styles.questionText}>{q}</Text>
-                </View>
-              ))}
-            </>
-          ) : null}
+          {advisor.starterQuestions.map((q, index) => (
+            <Pressable
+              key={q}
+              onPress={startRecommendedPlan}
+              style={({ pressed }) => [
+                styles.questionRow,
+                index < advisor.starterQuestions.length - 1 && styles.questionRowDivider,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Ionicons
+                name="chatbubble-ellipses-outline"
+                size={16}
+                color={colors.accent}
+                style={styles.questionIcon}
+              />
+              <Text style={styles.questionText}>{q}</Text>
+              <Ionicons name="arrow-forward" size={15} color={colors.textSecondary} />
+            </Pressable>
+          ))}
         </View>
 
-        <View style={styles.comingSoonCard}>
-          <Ionicons name="time-outline" size={20} color={colors.accent} />
-          <Text style={styles.comingSoonTitle}>Advisor chat is coming soon</Text>
-          <Text style={styles.comingSoonBody}>
-            For now, use Visualize to generate a full upgrade plan with budget ranges, a priority
-            checklist, and a client-ready PDF.
-          </Text>
+        <View style={styles.noticeCard}>
+          <Ionicons name="flask-outline" size={18} color={colors.accent} />
+          <View style={styles.noticeBody}>
+            <Text style={styles.noticeTitle}>Advisor chat is in MVP testing</Text>
+            <Text style={styles.noticeText}>
+              For full project output, generate a Visualize plan and export a PDF. Concept images
+              are planning references, not final renders.
+            </Text>
+          </View>
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
         <Pressable
           style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
-          onPress={() => router.push('/(tabs)/visualize')}
+          onPress={startRecommendedPlan}
         >
           <Ionicons name="scan-outline" size={18} color="#FFFFFF" />
-          <Text style={styles.primaryBtnText}>Start a Visualize Plan</Text>
+          <Text style={styles.primaryBtnText}>{advisor.ctaLabel}</Text>
         </Pressable>
+        <Pressable
+          style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
+          onPress={openVisualizePicker}
+        >
+          <Text style={styles.secondaryBtnText}>Start a Visualize Plan</Text>
+        </Pressable>
+        <Text style={styles.footerHint}>Recommended: {recommendedLabel}</Text>
       </View>
     </SafeAreaView>
   );
@@ -141,38 +170,47 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   sectionTitle: { ...typography.heading, fontSize: 15, marginBottom: spacing.sm },
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  chip: {
+    backgroundColor: '#E8F5EE',
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  chipText: { ...typography.caption, fontWeight: '600', color: colors.accent },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
     marginBottom: spacing.lg,
     ...shadows.card,
   },
-  cardLead: { ...typography.body, fontWeight: '600', marginBottom: spacing.sm },
-  cardSubheading: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: spacing.sm,
+  questionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
   },
-  questionRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.sm },
-  questionIcon: { marginRight: spacing.sm, marginTop: 2 },
-  questionText: { ...typography.body, flex: 1, color: colors.text },
-  comingSoonCard: {
+  questionRowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  questionIcon: { marginRight: spacing.sm },
+  questionText: { ...typography.body, flex: 1, color: colors.text, paddingRight: spacing.sm },
+  noticeCard: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     backgroundColor: '#E8F5EE',
     borderRadius: radius.lg,
     padding: spacing.md,
-    alignItems: 'center',
   },
-  comingSoonTitle: { ...typography.heading, fontSize: 15, marginTop: spacing.xs, marginBottom: 4 },
-  comingSoonBody: {
-    ...typography.caption,
-    textAlign: 'center',
-    lineHeight: 19,
-    color: colors.textSecondary,
-  },
+  noticeBody: { flex: 1 },
+  noticeTitle: { ...typography.heading, fontSize: 14, marginBottom: 2 },
+  noticeText: { ...typography.caption, lineHeight: 18, color: colors.textSecondary },
   footer: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
@@ -189,5 +227,18 @@ const styles = StyleSheet.create({
     minHeight: 50,
   },
   primaryBtnText: { fontWeight: '700', color: '#FFFFFF', fontSize: 15 },
+  secondaryBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    marginTop: spacing.xs,
+  },
+  secondaryBtnText: { ...typography.body, fontWeight: '600', color: colors.accent },
+  footerHint: {
+    ...typography.caption,
+    textAlign: 'center',
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
   pressed: { opacity: interaction.pressedOpacity },
 });

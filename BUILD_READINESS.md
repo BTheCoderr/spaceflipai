@@ -67,22 +67,55 @@ npx expo start -c
 rm -rf .expo node_modules/.cache && npx expo start -c
 ```
 
-## Making a dev / preview build later (when ready)
+## Dev / preview builds (verify native splash & icon outside Expo Go)
 
-Not required for Expo Go demos. When you want a standalone build:
+> **Why this matters:** Expo Go uses its own app shell, so it will **not** show the custom home-screen icon or the native splash screen. To verify icon/splash/native config you must make a **development** or **preview** build.
+
+EAS profiles are defined in `eas.json`:
+- **development** — internal distribution + dev client (`expo-dev-client`); install on a device and connect to the Metro dev server.
+- **preview** — internal distribution standalone build (TestFlight-style internal testing, no Metro needed).
+- **production** — App Store build later (auto-increments build number).
+
+### Exact commands
 
 ```bash
-npm install -g eas-cli
-eas login
-eas build:configure
-eas build --profile preview --platform ios     # internal/TestFlight-style
-eas build --profile preview --platform android
+# one-time
+npx eas login
+npx eas build:configure        # adds extra.eas.projectId to app.json on first run
+
+# iOS development build (dev client)
+npx eas build --platform ios --profile development
+
+# iOS preview build (internal, standalone)
+npx eas build --platform ios --profile preview
+
+# Android preview build (internal APK/AAB)
+npx eas build --platform android --profile preview
 ```
 
-App identifiers are set in `app.json`:
+Convenience npm scripts:
+
+```bash
+npm run build:ios:dev
+npm run build:ios:preview
+npm run build:android:preview
+```
+
+### App identifiers (in `app.json`)
 - iOS `bundleIdentifier`: `com.spaceflip.pro` (buildNumber `1`)
 - Android `package`: `com.spaceflip.pro` (versionCode `1`)
 - version `1.0.0`
+
+### TestFlight requirements
+- A paid **Apple Developer Program** account.
+- An **App Store Connect** app record matching bundle id `com.spaceflip.pro`.
+- A signed iOS build (EAS manages credentials), then `npx eas submit --platform ios` (do this manually — not automated here).
+
+### Important caveats for this build
+- **Concept/visual images are mocked** — labeled "Concept Reference", not real AI renders.
+- **Payments are not active** — no RevenueCat, no subscriptions; the Paywall route is MVP-mode only and unlinked.
+- **Auth is not active** — projects use a demo user id.
+- Expo Go cannot show the custom icon/splash; use a dev/preview build to verify them.
 
 ## What is still mocked
 
