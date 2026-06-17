@@ -51,7 +51,7 @@ export default function PaywallScreen() {
           </Pressable>
           <View style={styles.content}>
             <Text style={styles.title}>SpaceFlip Pro</Text>
-            <Text style={styles.subtitle}>MVP testing mode — no subscription is active yet</Text>
+            <Text style={styles.subtitle}>MVP testing mode — payments are not active yet</Text>
             <View style={styles.benefits}>
               {benefits.map((b) => (
                 <PaywallBenefit key={b} text={b} light />

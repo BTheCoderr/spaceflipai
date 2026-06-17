@@ -4,15 +4,24 @@ import { colors, interaction, radius, spacing } from '../constants/theme';
 type Props = {
   active: boolean;
   onPress: () => void;
+  /** Label shown when active (defaults to "After"). */
+  activeLabel?: string;
+  /** Label shown when inactive (defaults to "Before"). */
+  inactiveLabel?: string;
 };
 
-export function BeforeAfterButton({ active, onPress }: Props) {
+export function BeforeAfterButton({
+  active,
+  onPress,
+  activeLabel = 'After',
+  inactiveLabel = 'Before',
+}: Props) {
   return (
     <Pressable
       style={({ pressed }) => [styles.btn, active && styles.btnActive, pressed && styles.pressed]}
       onPress={onPress}
     >
-      <Text style={styles.text}>{active ? 'After' : 'Before'}</Text>
+      <Text style={styles.text}>{active ? activeLabel : inactiveLabel}</Text>
     </Pressable>
   );
 }

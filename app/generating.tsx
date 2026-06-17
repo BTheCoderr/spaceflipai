@@ -20,11 +20,11 @@ import { hasSupabaseConfig } from '../src/lib/supabase';
 import { colors, radius, spacing, typography } from '../src/constants/theme';
 
 const EDGE_STATUS_LABELS = [
-  'Preparing your upgrade plan…',
-  'Property photo ready',
-  'Building upgrade prompt…',
-  'Creating upgrade concept…',
-  'Finalizing project plan…',
+  'Uploading property photo…',
+  'Building planning prompt…',
+  'Generating upgrade plan…',
+  'Preparing concept reference…',
+  'Finalizing PDF-ready plan…',
 ] as const;
 
 export default function GeneratingScreen() {

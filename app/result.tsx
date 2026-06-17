@@ -197,8 +197,11 @@ export default function ResultScreen() {
         {activeTab === 'visual' ? (
           <>
             <Text style={styles.compareLabel}>
-              {showBefore ? 'Original Property Photo' : panelCopy.visualSubtitle}
+              {showBefore ? 'Original Property Photo' : 'Concept Reference'}
             </Text>
+            {!showBefore ? (
+              <Text style={styles.compareSubLabel}>{panelCopy.visualSubtitle}</Text>
+            ) : null}
             <View style={styles.imageArea}>
               <RemoteImage uri={displayImageUrl} style={styles.image} containerStyle={styles.imageContainer} />
               {inputUri ? (
@@ -210,14 +213,8 @@ export default function ResultScreen() {
                 />
               ) : null}
             </View>
-            {!showBefore ? (
-              <View style={styles.conceptBadgeRow}>
-                <Text style={styles.conceptBadge}>Concept reference</Text>
-              </View>
-            ) : null}
             <Text style={styles.conceptDisclaimer}>
-              Concept image is a planning reference. Final design and pricing should be verified by
-              professionals.
+              Planning reference only. Final design and pricing should be verified by professionals.
             </Text>
           </>
         ) : null}
@@ -351,17 +348,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.pillInactive,
   },
   fallbackNoteText: { ...typography.caption, flex: 1, color: colors.textSecondary },
-  conceptBadgeRow: { alignItems: 'center', marginBottom: spacing.xs },
-  conceptBadge: {
+  compareSubLabel: {
     ...typography.caption,
     fontSize: 11,
-    fontWeight: '700',
-    color: colors.accent,
-    backgroundColor: '#E8F5EE',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-    overflow: 'hidden',
+    textAlign: 'center',
+    color: colors.textSecondary,
+    marginTop: -2,
+    marginBottom: spacing.xs,
   },
   conceptDisclaimer: {
     ...typography.caption,

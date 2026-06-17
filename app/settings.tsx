@@ -23,9 +23,10 @@ export default function SettingsScreen() {
             <Text style={styles.noticeTitle}>MVP testing mode</Text>
           </View>
           <Text style={styles.noticeBody}>
-            No subscription is active in this build. Usage limits may apply while AI costs are being
-            tested. Plans are AI-generated planning drafts, and concept images are planning
-            references — not final designs.
+            SpaceFlip Pro is currently in MVP testing. Payments are not active in this build and no
+            subscription is required. Usage limits may apply while AI costs are being tested. Plans
+            are AI-generated planning drafts, and concept images are planning references — not final
+            designs.
           </Text>
         </View>
 

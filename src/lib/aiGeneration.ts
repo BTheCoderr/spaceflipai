@@ -7,11 +7,11 @@ import { getSupabaseClient, hasSupabaseConfig } from './supabase';
 import type { AiProvider, PlanSource, UpgradePlanPayload } from './upgradePlanPayload';
 
 export const EDGE_GENERATION_STEPS = [
-  'Queued',
-  'Upload complete',
-  'Building upgrade prompt',
-  'Creating upgrade concept',
-  'Finalizing project plan',
+  'Uploading property photo',
+  'Building planning prompt',
+  'Generating upgrade plan',
+  'Preparing concept reference',
+  'Finalizing PDF-ready plan',
 ] as const;
 
 export const EDGE_GENERATION_ERROR_MESSAGE =

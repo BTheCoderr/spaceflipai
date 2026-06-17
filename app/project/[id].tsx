@@ -17,9 +17,11 @@ import {
   getDesignProject,
   type DesignProject,
 } from '../../src/lib/projects';
+import { getGenerationJob } from '../../src/lib/generationJobs';
 import { useGenerationStore } from '../../src/lib/generationStore';
 import { getProjectTypeLabel } from '../../src/data/mockProjectTypes';
 import { formatSourceLabel } from '../../src/lib/imagePicker';
+import { aiProviderDevLabel, planSourceLabel } from '../../src/lib/upgradePlanPayload';
 import {
   exportAndSharePlan,
   ExportPlanError,
@@ -33,6 +35,8 @@ export default function ProjectDetailScreen() {
   const { loadSavedProjects } = useGenerationStore();
 
   const [project, setProject] = useState<DesignProject | null>(null);
+  const [planSourceText, setPlanSourceText] = useState('Saved planning draft');
+  const [providerText, setProviderText] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -42,8 +46,22 @@ export default function ProjectDetailScreen() {
       let active = true;
       setLoading(true);
       getDesignProject(id)
-        .then((p) => {
-          if (active) setProject(p);
+        .then(async (p) => {
+          if (!active) return;
+          setProject(p);
+          // Derive the real plan source/provider from the linked generation job, if any.
+          if (p?.generationJobId) {
+            const job = await getGenerationJob(p.generationJobId);
+            if (active && job) {
+              const source = job.planSource === 'ai' ? 'ai' : 'mock';
+              setPlanSourceText(planSourceLabel(source));
+              const provider =
+                job.aiProvider === 'gemini' || job.aiProvider === 'groq' || job.aiProvider === 'mock'
+                  ? job.aiProvider
+                  : undefined;
+              setProviderText(aiProviderDevLabel(provider));
+            }
+          }
         })
         .finally(() => {
           if (active) setLoading(false);
@@ -153,7 +171,8 @@ export default function ProjectDetailScreen() {
               <MetaRow label="Project type" value={getProjectTypeLabel(project.projectType)} />
               {project.goal ? <MetaRow label="Goal" value={project.goal} /> : null}
               {project.budgetRange ? <MetaRow label="Budget range" value={project.budgetRange} /> : null}
-              <MetaRow label="Plan source" value="Saved planning draft" />
+              <MetaRow label="Plan source" value={planSourceText} />
+              {providerText ? <MetaRow label="AI provider" value={providerText} /> : null}
               <MetaRow label="Photo source" value={formatSourceLabel(project.source)} />
             </View>
 

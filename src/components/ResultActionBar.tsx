@@ -30,7 +30,12 @@ export function ResultActionBar({
       >
         <Ionicons name="thumbs-up-outline" size={22} color="#FFFFFF" />
       </Pressable>
-      <BeforeAfterButton active={showBefore} onPress={onToggleBefore} />
+      <BeforeAfterButton
+        active={showBefore}
+        onPress={onToggleBefore}
+        activeLabel="Original"
+        inactiveLabel="Concept"
+      />
     </View>
   );
 }
