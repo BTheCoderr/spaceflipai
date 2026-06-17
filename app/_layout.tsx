@@ -13,6 +13,7 @@ export default function RootLayout() {
         <Stack.Screen name="generating" options={{ presentation: 'card', gestureEnabled: false }} />
         <Stack.Screen name="result" options={{ presentation: 'card' }} />
         <Stack.Screen name="advisor/[id]" options={{ presentation: 'card' }} />
+        <Stack.Screen name="project/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="plan/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
         <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />

@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { PaywallBenefit } from '../src/components/PaywallBenefit';
-import { startTrialMock, restorePurchasesMock } from '../src/lib/payments';
 import { normalizeImageUrl } from '../src/constants/layout';
 import { colors, interaction, radius, spacing, typography } from '../src/constants/theme';
 
@@ -12,11 +11,11 @@ const BACKGROUND_IMAGE = normalizeImageUrl(
 );
 
 const benefits = [
-  'Unlimited property upgrade plans',
+  'AI-generated property upgrade plans',
   'Airbnb, office, retail, and landscape workflows',
   'Budget ranges and contractor checklists',
-  'Save and export client-ready plans',
-  'Priority plan generation',
+  'Save and export client-ready PDFs',
+  'Concept references for planning discussions',
 ];
 
 export default function PaywallScreen() {
@@ -30,18 +29,12 @@ export default function PaywallScreen() {
     }
   };
 
-  const handleStartTrial = () => {
-    startTrialMock();
-    Alert.alert('Welcome to Pro!', 'Your 3-day free trial has started (mock).', [
-      { text: 'OK', onPress: dismiss },
-    ]);
-  };
-
-  const handleRestore = () => {
-    restorePurchasesMock();
-    Alert.alert('Restored', 'Your Pro subscription has been restored (mock).', [
-      { text: 'OK', onPress: dismiss },
-    ]);
+  const handleContinue = () => {
+    Alert.alert(
+      'MVP testing mode',
+      'No subscription is active in this build. You can keep generating planning drafts while we test AI costs.',
+      [{ text: 'OK', onPress: dismiss }]
+    );
   };
 
   return (
@@ -58,7 +51,7 @@ export default function PaywallScreen() {
           </Pressable>
           <View style={styles.content}>
             <Text style={styles.title}>SpaceFlip Pro</Text>
-            <Text style={styles.subtitle}>Try 3 days free, then $9.99/week</Text>
+            <Text style={styles.subtitle}>MVP testing mode — no subscription is active yet</Text>
             <View style={styles.benefits}>
               {benefits.map((b) => (
                 <PaywallBenefit key={b} text={b} light />
@@ -68,15 +61,9 @@ export default function PaywallScreen() {
           <View style={styles.footer}>
             <Pressable
               style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
-              onPress={handleStartTrial}
+              onPress={handleContinue}
             >
-              <Text style={styles.primaryText}>Start Free Trial</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
-              onPress={handleRestore}
-            >
-              <Text style={styles.secondaryText}>Restore Purchase</Text>
+              <Text style={styles.primaryText}>Continue</Text>
             </Pressable>
             <Pressable style={({ pressed }) => [pressed && styles.pressed]} onPress={dismiss}>
               <Text style={styles.notNow}>Not now</Text>

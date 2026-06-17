@@ -1,10 +1,9 @@
-import { ScrollView, StyleSheet, Alert } from 'react-native';
+import { ScrollView, StyleSheet, View, Text, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { ScreenHeader } from '../src/components/ScreenHeader';
 import { SettingsRow } from '../src/components/SettingsRow';
-import { ProBanner } from '../src/components/ProBanner';
-import { openPaywallMock, restorePurchasesMock } from '../src/lib/payments';
-import { colors, spacing } from '../src/constants/theme';
+import { colors, radius, spacing, typography } from '../src/constants/theme';
 
 const PLACEHOLDER_LEGAL =
   'This is placeholder legal text for the SpaceFlip Pro MVP. Full terms and privacy policy will be added before launch.';
@@ -18,18 +17,22 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <ScreenHeader title="Settings" variant="close" />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <ProBanner onGetPro={() => openPaywallMock()} />
+        <View style={styles.noticeCard}>
+          <View style={styles.noticeHeader}>
+            <Ionicons name="flask-outline" size={18} color={colors.accent} />
+            <Text style={styles.noticeTitle}>MVP testing mode</Text>
+          </View>
+          <Text style={styles.noticeBody}>
+            No subscription is active in this build. Usage limits may apply while AI costs are being
+            tested. Plans are AI-generated planning drafts, and concept images are planning
+            references — not final designs.
+          </Text>
+        </View>
+
         <SettingsRow label="Feedback" onPress={() => showAlert('Feedback')} />
         <SettingsRow label="FAQ" onPress={() => showAlert('FAQ')} />
         <SettingsRow label="Terms of Use" onPress={() => showAlert('Terms of Use', PLACEHOLDER_LEGAL)} />
         <SettingsRow label="Privacy Policy" onPress={() => showAlert('Privacy Policy', PLACEHOLDER_LEGAL)} />
-        <SettingsRow
-          label="Restore Purchase"
-          onPress={() => {
-            restorePurchasesMock();
-            Alert.alert('Restored', 'Your Pro subscription has been restored (mock).');
-          }}
-        />
         <SettingsRow label="Contact Support" onPress={() => showAlert('Contact Support')} />
       </ScrollView>
     </SafeAreaView>
@@ -44,4 +47,14 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: spacing.xl,
   },
+  noticeCard: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: '#E8F5EE',
+  },
+  noticeHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  noticeTitle: { ...typography.heading, fontSize: 15 },
+  noticeBody: { ...typography.caption, lineHeight: 19, color: colors.textSecondary },
 });

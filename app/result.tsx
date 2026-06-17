@@ -46,6 +46,7 @@ export default function ResultScreen() {
     currentResultPayload,
     currentPlanSource,
     currentAiProvider,
+    currentUsedFallback,
     currentJob,
     uploadedInputPublicUrl,
     selectedGoal,
@@ -169,6 +170,15 @@ export default function ResultScreen() {
         ) : null}
       </View>
 
+      {currentUsedFallback ? (
+        <View style={styles.fallbackNote}>
+          <Ionicons name="information-circle-outline" size={15} color={colors.textSecondary} />
+          <Text style={styles.fallbackNoteText}>
+            We used a fallback plan because AI generation was unavailable.
+          </Text>
+        </View>
+      ) : null}
+
       <View style={styles.tabRow}>
         {tabs.map((tab) => (
           <Pressable
@@ -200,6 +210,15 @@ export default function ResultScreen() {
                 />
               ) : null}
             </View>
+            {!showBefore ? (
+              <View style={styles.conceptBadgeRow}>
+                <Text style={styles.conceptBadge}>Concept reference</Text>
+              </View>
+            ) : null}
+            <Text style={styles.conceptDisclaimer}>
+              Concept image is a planning reference. Final design and pricing should be verified by
+              professionals.
+            </Text>
           </>
         ) : null}
 
@@ -319,6 +338,39 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginTop: 2,
     opacity: 0.7,
+  },
+  fallbackNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    backgroundColor: colors.pillInactive,
+  },
+  fallbackNoteText: { ...typography.caption, flex: 1, color: colors.textSecondary },
+  conceptBadgeRow: { alignItems: 'center', marginBottom: spacing.xs },
+  conceptBadge: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.accent,
+    backgroundColor: '#E8F5EE',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  conceptDisclaimer: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    lineHeight: 16,
   },
   tabRow: {
     flexDirection: 'row',

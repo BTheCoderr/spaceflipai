@@ -87,6 +87,7 @@ type GenerationState = {
   currentResultPayload?: UpgradePlanPayload;
   currentPlanSource?: PlanSource;
   currentAiProvider?: AiProvider;
+  currentUsedFallback?: boolean;
   uploadedInputPublicUrl?: string;
   uploadedInputStoragePath?: string;
   generationError?: string;
@@ -128,6 +129,7 @@ type GenerationContextValue = GenerationState & {
       resultPayload?: UpgradePlanPayload;
       planSource?: PlanSource;
       aiProvider?: AiProvider;
+      usedFallback?: boolean;
     }
   ) => Promise<void>;
   failCurrentJob: (message: string) => Promise<void>;
@@ -302,6 +304,10 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
           currentJobId: job.id,
           currentJob: job,
           currentUpgradePlan: upgradePlan,
+          currentResultPayload: undefined,
+          currentPlanSource: undefined,
+          currentAiProvider: undefined,
+          currentUsedFallback: undefined,
           selectedProjectTypeId: input.projectTypeId,
           selectedGoal: input.goal,
           selectedBudgetRange: input.budgetRange ?? prev.selectedBudgetRange,
@@ -352,6 +358,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         resultPayload?: UpgradePlanPayload;
         planSource?: PlanSource;
         aiProvider?: AiProvider;
+        usedFallback?: boolean;
       }
     ) => {
       const jobId = stateRef.current.currentJobId;
@@ -364,6 +371,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
           currentResultPayload: options?.resultPayload ?? prev.currentResultPayload,
           currentPlanSource: options?.planSource ?? prev.currentPlanSource ?? 'mock',
           currentAiProvider: options?.aiProvider ?? prev.currentAiProvider ?? 'mock',
+          currentUsedFallback: options?.usedFallback ?? prev.currentUsedFallback,
         }));
         return;
       }
@@ -382,6 +390,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         currentResultPayload: options?.resultPayload ?? prev.currentResultPayload,
         currentPlanSource: options?.planSource ?? prev.currentPlanSource ?? 'mock',
         currentAiProvider: options?.aiProvider ?? prev.currentAiProvider ?? 'mock',
+        currentUsedFallback: options?.usedFallback ?? prev.currentUsedFallback,
         generationError: undefined,
       }));
     },

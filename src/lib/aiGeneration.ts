@@ -24,6 +24,10 @@ export type UpgradeGenerationResult = {
   aiProvider: AiProvider;
   promptPreview?: string;
   source: 'edge' | 'local';
+  /** True when AI generation failed and a local fallback plan was used. */
+  usedFallback: boolean;
+  /** Internal, sanitized reason for the fallback (for logs/state, not raw provider errors). */
+  fallbackReason?: string;
 };
 
 type EdgeFunctionPayload = {
@@ -47,17 +51,21 @@ export class AiGenerationError extends Error {
 
 const DEMO_USER_ID = 'demo-user';
 
-async function runLocalMockGeneration(jobId: string): Promise<UpgradeGenerationResult> {
+async function runLocalMockGeneration(
+  jobId: string,
+  options?: { usedFallback?: boolean; fallbackReason?: string }
+): Promise<UpgradeGenerationResult> {
   await updateGenerationJobStatus(jobId, 'processing');
   const job = await completeGenerationJobMock(jobId);
-  if (!job.resultImageUrl) {
-    throw new AiGenerationError();
-  }
+  const resultImageUrl =
+    job.resultImageUrl ?? 'https://images.unsplash.com/photo-1618221197160-8070ed78f1c9?w=600';
   return {
-    resultImageUrl: job.resultImageUrl,
+    resultImageUrl,
     planSource: 'mock',
     aiProvider: 'mock',
     source: 'local',
+    usedFallback: options?.usedFallback ?? false,
+    fallbackReason: options?.fallbackReason,
   };
 }
 
@@ -81,22 +89,27 @@ async function runEdgeFunctionGeneration(
     }
   );
 
+  // MVP reliability: never block the user on AI failure — fall back to a local plan.
   if (error) {
-    console.warn('[SpaceFlip Pro][AI] Edge function invoke failed:', {
-      message: error.message,
+    console.warn('[SpaceFlip Pro][AI] Edge function invoke failed, using fallback plan:', {
       name: error.name,
       jobId,
     });
-    throw new AiGenerationError();
+    return runLocalMockGeneration(jobId, {
+      usedFallback: true,
+      fallbackReason: 'edge_invoke_failed',
+    });
   }
 
   if (!data?.ok || !data.resultImageUrl) {
-    console.warn('[SpaceFlip Pro][AI] Edge function returned error:', {
+    console.warn('[SpaceFlip Pro][AI] Edge function returned error, using fallback plan:', {
       jobId,
       error: data?.error ?? 'Unknown error',
-      payload: data,
     });
-    throw new AiGenerationError();
+    return runLocalMockGeneration(jobId, {
+      usedFallback: true,
+      fallbackReason: 'edge_returned_error',
+    });
   }
 
   if (__DEV__) {
@@ -119,6 +132,9 @@ async function runEdgeFunctionGeneration(
     aiProvider: data.aiProvider ?? 'mock',
     promptPreview: data.promptPreview,
     source: 'edge',
+    // A completed job with mock plan source means the server used its own fallback.
+    usedFallback: (data.planSource ?? 'mock') === 'mock',
+    fallbackReason: (data.planSource ?? 'mock') === 'mock' ? 'server_mock_fallback' : undefined,
   };
 }
 
@@ -144,10 +160,22 @@ export async function runUpgradeGeneration(
   try {
     return await runEdgeFunctionGeneration(jobId, userId);
   } catch (error) {
-    if (error instanceof AiGenerationError) {
-      throw error;
+    // Last-resort fallback so the user always reaches a usable Result screen.
+    console.warn('[SpaceFlip Pro][AI] Unexpected generation error, using fallback plan:', {
+      name: error instanceof Error ? error.name : 'unknown',
+      jobId,
+    });
+    try {
+      return await runLocalMockGeneration(jobId, {
+        usedFallback: true,
+        fallbackReason: 'unexpected_error',
+      });
+    } catch (fallbackError) {
+      console.warn('[SpaceFlip Pro][AI] Fallback generation also failed:', {
+        name: fallbackError instanceof Error ? fallbackError.name : 'unknown',
+        jobId,
+      });
+      throw new AiGenerationError();
     }
-    console.warn('[SpaceFlip Pro][AI] Unexpected generation error:', error);
-    throw new AiGenerationError();
   }
 }

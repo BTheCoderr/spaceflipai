@@ -6,14 +6,12 @@ import { GenerationProgress } from '../src/components/GenerationProgress';
 import { RemoteImage } from '../src/components/RemoteImage';
 import { useGenerationStore } from '../src/lib/generationStore';
 import {
-  AiGenerationError,
   EDGE_GENERATION_ERROR_MESSAGE,
   EDGE_GENERATION_STEPS,
   runUpgradeGeneration,
 } from '../src/lib/aiGeneration';
 import {
   completeGenerationJobMock,
-  getGenerationJob,
   getGenerationJobStatusLabel,
 } from '../src/lib/generationJobs';
 import { getProjectTypeById, type ProjectTypeId } from '../src/data/mockProjectTypes';
@@ -85,6 +83,7 @@ export default function GeneratingScreen() {
           resultPayload: result.resultPayload,
           planSource: result.planSource,
           aiProvider: result.aiProvider,
+          usedFallback: result.usedFallback,
         });
 
         if (navigated.current) return;
@@ -102,16 +101,31 @@ export default function GeneratingScreen() {
           },
         });
       } catch (error) {
-        console.warn('[SpaceFlip Pro] Upgrade plan generation failed:', error);
+        // runUpgradeGeneration falls back internally; this only fires if even the
+        // local fallback failed. Route to Result with the demo plan rather than blocking.
+        console.warn('[SpaceFlip Pro] Upgrade plan generation failed:', {
+          name: error instanceof Error ? error.name : 'unknown',
+        });
         if (navigated.current) return;
         navigated.current = true;
 
-        const message =
-          error instanceof AiGenerationError ? error.message : EDGE_GENERATION_ERROR_MESSAGE;
-        await failCurrentJob(message);
-        Alert.alert('Plan generation failed', message, [
-          { text: 'OK', onPress: () => router.back() },
-        ]);
+        await completeCurrentJobMock(
+          'https://images.unsplash.com/photo-1618221197160-8070ed78f1c9?w=600',
+          0,
+          { planSource: 'mock', aiProvider: 'mock', usedFallback: true }
+        );
+
+        router.replace({
+          pathname: '/result',
+          params: {
+            jobId: activeJobId,
+            projectType: projectType ?? project?.id ?? '',
+            projectTitle: displayTitle,
+            goal: goal ?? '',
+            imageUrl: 'https://images.unsplash.com/photo-1618221197160-8070ed78f1c9?w=600',
+            inputImageUrl: previewUri ?? '',
+          },
+        });
       }
     };
 
@@ -128,30 +142,6 @@ export default function GeneratingScreen() {
     goal,
     previewUri,
   ]);
-
-  useEffect(() => {
-    if (!activeJobId || !useEdgeFlow) return;
-
-    const poll = async () => {
-      try {
-        const job = await getGenerationJob(activeJobId);
-        if (job?.status === 'failed' && !navigated.current) {
-          navigated.current = true;
-          Alert.alert(
-            'Plan generation failed',
-            job.errorMessage ?? EDGE_GENERATION_ERROR_MESSAGE,
-            [{ text: 'OK', onPress: () => router.back() }]
-          );
-        }
-      } catch {
-        // keep polling
-      }
-    };
-
-    poll();
-    const interval = setInterval(poll, 800);
-    return () => clearInterval(interval);
-  }, [activeJobId, useEdgeFlow, router]);
 
   const handleProgressStep = (index: number) => {
     if (useEdgeFlow) {

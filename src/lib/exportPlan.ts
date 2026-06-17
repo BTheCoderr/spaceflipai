@@ -47,6 +47,9 @@ export class ExportPlanError extends Error {
 const DISCLAIMER =
   'Estimates are planning references only. Final pricing should come from licensed professionals.';
 
+const CONCEPT_IMAGE_DISCLAIMER =
+  'Concept image is a planning reference. Final design and pricing should be verified by professionals.';
+
 const DEFAULT_CHECKLIST = [
   'Confirm scope and photo priorities',
   'Measure key zones and traffic paths',
@@ -237,10 +240,12 @@ async function preparePlanForPdf(projectResult: ExportPlanInput): Promise<Prepar
  */
 export function buildPlanHtml(prepared: PreparedExportPlan): string {
   const inputBlock = renderImageBlock('Original Property Photo', prepared.resolvedInputImage);
-  const resultBlock = renderImageBlock('Upgrade Concept', prepared.resolvedResultImage);
+  const resultBlock = renderImageBlock('Concept Reference', prepared.resolvedResultImage);
   const photosSection =
     inputBlock || resultBlock
-      ? `<h2>Property Photos</h2><div class="images">${inputBlock}${resultBlock}</div>`
+      ? `<h2>Property Photos</h2><div class="images">${inputBlock}${resultBlock}</div><p class="concept-note">${escapeHtml(
+          CONCEPT_IMAGE_DISCLAIMER
+        )}</p>`
       : '';
 
   return `<!DOCTYPE html>
@@ -355,6 +360,12 @@ export function buildPlanHtml(prepared: PreparedExportPlan): string {
     }
     .muted {
       color: #6B7280;
+    }
+    .concept-note {
+      font-size: 10px;
+      font-style: italic;
+      color: #6B7280;
+      margin: 8px 0 0;
     }
     ul {
       margin: 0;
