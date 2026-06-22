@@ -676,7 +676,7 @@ async function generateUpgradeImage(
 // HTTP handler (inlined from generate-upgrade-plan/index.ts)
 // -----------------------------------------------------------------------------
 const DEMO_USER_ID = 'demo-user';
-const FUNCTION_VERSION = 'phase9-dashboard-gemini-v2';
+const FUNCTION_VERSION = 'phase16-auth-v1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -691,6 +691,26 @@ function jsonResponse(body: GenerateUpgradePlanResponse, status = 200): Response
       'Content-Type': 'application/json',
     },
   });
+}
+
+/**
+ * Resolves the authenticated user id from the incoming session JWT.
+ * Returns null for anon-key requests or invalid tokens. Never logs the token.
+ */
+async function getAuthenticatedUserId(
+  supabase: ReturnType<typeof createClient>,
+  authHeader: string | null
+): Promise<string | null> {
+  if (!authHeader) return null;
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  if (!token) return null;
+  try {
+    const { data, error } = await supabase.auth.getUser(token);
+    if (error || !data?.user) return null;
+    return data.user.id;
+  } catch {
+    return null;
+  }
 }
 
 Deno.serve(async (req: Request) => {
@@ -743,7 +763,12 @@ Deno.serve(async (req: Request) => {
 
   const record = job as GenerationJobRecord;
 
-  if (record.user_id !== userId) {
+  // Prefer the verified JWT user id over any client-provided body userId.
+  const authUserId = await getAuthenticatedUserId(supabase, req.headers.get('Authorization'));
+  const effectiveUserId = authUserId ?? userId;
+  console.log('[generate-upgrade-plan] auth resolved:', authUserId ? 'jwt' : 'fallback-body');
+
+  if (record.user_id !== effectiveUserId) {
     return jsonResponse({ ok: false, error: 'User does not match job' }, 403);
   }
 

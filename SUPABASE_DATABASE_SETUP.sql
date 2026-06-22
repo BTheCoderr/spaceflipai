@@ -1,8 +1,10 @@
 -- SpaceFlip Pro — Database setup (Phase 6)
 -- Run in Supabase Dashboard → SQL Editor
 --
--- Auth is NOT enabled yet. Rows use text user_id default 'demo-user'.
--- RLS policies below are MVP-only for anon testing — tighten before production.
+-- NOTE (Phase 16): Auth is now enabled. After running this base setup, run
+--   SUPABASE_AUTH_MIGRATION.sql to replace the demo-user RLS policies below with
+--   per-user policies based on auth.uid(). The demo-user defaults/policies here
+--   remain only for local fallback/testing.
 
 -- ---------------------------------------------------------------------------
 -- updated_at trigger helper

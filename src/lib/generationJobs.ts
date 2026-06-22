@@ -2,7 +2,7 @@ import { getProjectTypeById } from '../data/mockProjectTypes';
 import type { PickedImageSource } from './imagePicker';
 import { DB_TABLE_MISSING_MESSAGE, logDbWarning, mapSupabaseDbError } from './dbErrors';
 import { canUseGeneration, consumeGenerationQuota } from './payments';
-import { getSupabaseClient, hasSupabaseConfig } from './supabase';
+import { getOwnerId, getSupabaseClient, hasSupabaseConfig } from './supabase';
 
 export type GenerationJobStatus =
   | 'queued'
@@ -75,7 +75,6 @@ const MOCK_RESULT_URLS = [
 ];
 
 const jobs = new Map<string, GenerationJob>();
-const DEMO_USER_ID = 'demo-user';
 
 function createLocalId(): string {
   return `job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -173,7 +172,7 @@ function createLocalJob(input: CreateGenerationJobInput): GenerationJob {
   const timestamp = nowIso();
   const job: GenerationJob = {
     id: createLocalId(),
-    userId: input.userId ?? DEMO_USER_ID,
+    userId: input.userId ?? getOwnerId(),
     toolId: input.toolId,
     styleId: input.styleId ?? input.goal,
     goal: input.goal ?? input.styleId,
@@ -198,7 +197,7 @@ async function createGenerationJobSupabase(input: CreateGenerationJobInput): Pro
     return createLocalJob(input);
   }
 
-  const userId = input.userId ?? DEMO_USER_ID;
+  const userId = input.userId ?? getOwnerId();
   const { data, error } = await client
     .from('generation_jobs')
     .insert(jobToInsertRow(input, userId))
@@ -322,7 +321,7 @@ export async function updateGenerationJobStatus(
   const updated: GenerationJob = {
     ...(cached ?? {
       id: jobId,
-      userId: DEMO_USER_ID,
+      userId: getOwnerId(),
       toolId: '',
       inputImageUri: '',
       status: 'queued',
@@ -441,7 +440,7 @@ async function listGenerationJobsSupabase(userId: string): Promise<GenerationJob
 }
 
 export async function listGenerationJobsForUser(
-  userId = DEMO_USER_ID
+  userId = getOwnerId()
 ): Promise<GenerationJob[]> {
   if (hasSupabaseConfig()) {
     const remoteJobs = await listGenerationJobsSupabase(userId);

@@ -3,7 +3,7 @@ import {
   getGenerationJob,
   updateGenerationJobStatus,
 } from './generationJobs';
-import { getSupabaseClient, hasSupabaseConfig } from './supabase';
+import { getOwnerId, getSupabaseClient, hasSupabaseConfig } from './supabase';
 import type { AiProvider, PlanSource, UpgradePlanPayload } from './upgradePlanPayload';
 
 export const EDGE_GENERATION_STEPS = [
@@ -48,8 +48,6 @@ export class AiGenerationError extends Error {
     this.name = 'AiGenerationError';
   }
 }
-
-const DEMO_USER_ID = 'demo-user';
 
 async function runLocalMockGeneration(
   jobId: string,
@@ -144,7 +142,7 @@ async function runEdgeFunctionGeneration(
  */
 export async function runUpgradeGeneration(
   jobId: string,
-  userId = DEMO_USER_ID
+  userId = getOwnerId()
 ): Promise<UpgradeGenerationResult> {
   if (!jobId) {
     throw new AiGenerationError('Missing generation job.');

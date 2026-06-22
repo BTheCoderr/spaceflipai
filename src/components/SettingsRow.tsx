@@ -6,16 +6,19 @@ type Props = {
   label: string;
   onPress: () => void;
   showChevron?: boolean;
+  destructive?: boolean;
 };
 
-export function SettingsRow({ label, onPress, showChevron = true }: Props) {
+export function SettingsRow({ label, onPress, showChevron = true, destructive = false }: Props) {
   return (
     <Pressable
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
       onPress={onPress}
     >
-      <Text style={styles.label}>{label}</Text>
-      {showChevron && <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />}
+      <Text style={[styles.label, destructive && styles.labelDestructive]}>{label}</Text>
+      {showChevron && !destructive && (
+        <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+      )}
     </Pressable>
   );
 }
@@ -33,6 +36,10 @@ const styles = StyleSheet.create({
   label: {
     ...typography.body,
     fontSize: 16,
+  },
+  labelDestructive: {
+    color: '#C0392B',
+    fontWeight: '600',
   },
   pressed: {
     opacity: interaction.pressedOpacity,

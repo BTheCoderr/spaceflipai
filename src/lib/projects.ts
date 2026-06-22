@@ -8,7 +8,7 @@ import {
   logDbWarning,
   mapSupabaseDbError,
 } from './dbErrors';
-import { getSupabaseClient, hasSupabaseConfig } from './supabase';
+import { getOwnerId, getSupabaseClient, hasSupabaseConfig } from './supabase';
 
 export type DesignProject = {
   id: string;
@@ -67,7 +67,6 @@ type DesignProjectRow = {
   updated_at: string;
 };
 
-const DEMO_USER_ID = 'demo-user';
 const localProjects = new Map<string, DesignProject>();
 
 function createLocalId(): string {
@@ -118,7 +117,7 @@ function inputToLocalProject(input: SaveDesignProjectInput): DesignProject {
   const timestamp = nowIso();
   const project: DesignProject = {
     id: createLocalId(),
-    userId: input.userId ?? DEMO_USER_ID,
+    userId: input.userId ?? getOwnerId(),
     generationJobId: input.generationJobId,
     projectType: input.projectType,
     goal: input.goal,
@@ -145,7 +144,7 @@ async function saveDesignProjectSupabase(input: SaveDesignProjectInput): Promise
     return inputToLocalProject(input);
   }
 
-  const userId = input.userId ?? DEMO_USER_ID;
+  const userId = input.userId ?? getOwnerId();
   const row = {
     user_id: userId,
     generation_job_id: input.generationJobId ?? null,
@@ -228,7 +227,7 @@ async function listDesignProjectsSupabase(userId: string): Promise<DesignProject
   return projects;
 }
 
-export async function listDesignProjectsForUser(userId = DEMO_USER_ID): Promise<DesignProject[]> {
+export async function listDesignProjectsForUser(userId = getOwnerId()): Promise<DesignProject[]> {
   if (!hasSupabaseConfig()) {
     return [...localProjects.values()]
       .filter((project) => project.userId === userId)

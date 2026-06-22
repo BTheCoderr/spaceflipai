@@ -1,6 +1,6 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import type { PickedImage, PickedImageSource } from './imagePicker';
-import { getSupabaseClient, hasSupabaseConfig } from './supabase';
+import { getOwnerId, getSupabaseClient, hasSupabaseConfig } from './supabase';
 
 export const DESIGN_INPUTS_BUCKET = 'design-inputs';
 
@@ -311,7 +311,7 @@ async function uploadDesignInputImageSupabase(
 
 export async function uploadDesignInputImage(
   image: PickedImage,
-  userId = 'demo-user'
+  userId = getOwnerId()
 ): Promise<UploadDesignInputResult> {
   if (!image?.uri) {
     throw new StorageUploadError('No photo selected. Please choose an image first.', 'missing_image');
@@ -343,7 +343,7 @@ export async function deleteDesignInputImage(storagePath: string): Promise<void>
 /** @deprecated Use uploadDesignInputImage instead */
 export async function uploadRoomPhoto(
   localUri: string,
-  userId = 'demo-user'
+  userId = getOwnerId()
 ): Promise<{
   id: string;
   userId: string;
@@ -376,7 +376,7 @@ export async function uploadRoomPhoto(
 /** @deprecated Kept for generation.ts re-export compatibility */
 export async function uploadRoomPhotoMock(
   localUri: string,
-  userId = 'demo-user'
+  userId = getOwnerId()
 ): Promise<{
   id: string;
   userId: string;

@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { GenerationProvider } from '../src/lib/generationStore';
+import { ProfileProvider } from '../src/lib/profileStore';
 
 const SPLASH_BG = '#F8F7F2';
 const SPLASH_ICON = require('../assets/splash-icon.png');
@@ -37,11 +38,14 @@ export default function RootLayout() {
   }
 
   return (
-    <GenerationProvider>
-      <StatusBar style="dark" />
-      <View style={styles.flex}>
+    <ProfileProvider>
+      <GenerationProvider>
+        <StatusBar style="dark" />
+        <View style={styles.flex}>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#FAFAF8' } }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="login" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="project-intake/[projectType]" options={{ presentation: 'card' }} />
         <Stack.Screen name="generating" options={{ presentation: 'card', gestureEnabled: false }} />
@@ -59,8 +63,9 @@ export default function RootLayout() {
         <Stack.Screen name="create-painting" options={{ presentation: 'card' }} />
         <Stack.Screen name="painting-result" options={{ presentation: 'card' }} />
       </Stack>
-      </View>
-    </GenerationProvider>
+        </View>
+      </GenerationProvider>
+    </ProfileProvider>
   );
 }
 

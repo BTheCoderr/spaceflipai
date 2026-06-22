@@ -2,8 +2,9 @@
 -- Run in Supabase Dashboard → SQL Editor
 --
 -- Fixes: "new row violates row-level security policy" (403) on upload
--- Auth is NOT enabled yet — paths use users/demo-user/...
--- Tighten these policies when Phase 7 (Auth) ships.
+-- NOTE (Phase 16): Auth is now enabled. Run SUPABASE_AUTH_MIGRATION.sql to
+--   replace these anon demo-user policies with per-user policies scoped to
+--   users/{auth.uid()}/inputs/... The bucket stays PUBLIC for image display.
 
 -- Ensure bucket exists (create manually in Dashboard if this fails):
 -- Storage → New bucket → name: design-inputs → Public: ON
