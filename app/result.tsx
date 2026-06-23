@@ -174,7 +174,8 @@ export default function ResultScreen() {
         <View style={styles.fallbackNote}>
           <Ionicons name="information-circle-outline" size={15} color={colors.textSecondary} />
           <Text style={styles.fallbackNoteText}>
-            We used a fallback plan because AI generation was unavailable.
+            AI generation was unavailable, so SpaceFlip Pro prepared a demo planning draft. You can
+            still review every tab and export a PDF.
           </Text>
         </View>
       ) : null}

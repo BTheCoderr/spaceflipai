@@ -24,8 +24,23 @@ export function DeleteDataPage() {
           <li>Tap <strong>Delete Project</strong> on the project detail screen.</li>
         </ol>
         <p>
-          This removes the saved project record associated with that item. Related generation job
-          data may remain for service reliability unless you also request deletion by email.
+          This removes the saved project record associated with that item.
+        </p>
+
+        <h2>Delete your entire guest workspace in the app</h2>
+        <p>
+          SpaceFlip Pro creates a private guest workspace (no account or password required) to save
+          your projects. To delete everything connected to that workspace:
+        </p>
+        <ol>
+          <li>Open the SpaceFlip Pro app.</li>
+          <li>Go to <strong>Settings</strong>.</li>
+          <li>Tap <strong>Delete guest workspace and data</strong>.</li>
+          <li>Confirm in the dialog.</li>
+        </ol>
+        <p>
+          This deletes your saved projects, generation jobs, and uploaded property photos for that
+          workspace, then signs you out. This cannot be undone.
         </p>
 
         <h2>Request data deletion by email</h2>

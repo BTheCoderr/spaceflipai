@@ -2,10 +2,11 @@ import { Link } from 'react-router-dom';
 import { mailto, siteConfig } from '../config/site';
 
 const trustItems = [
+  'No account or password required — start in a private guest workspace.',
   'No subscription is active in the MVP build.',
   'Concept images are planning references, not final renders.',
   'AI generation may fall back to demo plans if a provider or network issue occurs.',
-  'You can delete saved projects in the app or request data deletion by email.',
+  'Delete your guest workspace and data anytime in the app (Settings) or via the Delete Data page.',
   `Support is available at ${siteConfig.supportEmail}.`,
 ];
 
