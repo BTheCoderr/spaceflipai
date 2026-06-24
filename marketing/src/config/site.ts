@@ -1,9 +1,9 @@
 /** Central site config — update these before public launch. */
 export const siteConfig = {
   name: 'SpaceFlip Pro',
-  tagline: 'AI upgrade plans for properties and spaces',
+  tagline: 'Turn property photos into practical upgrade plans',
   description:
-    'Upload a property photo, generate a practical upgrade plan, and export a client-ready PDF with budget, materials, checklist, and contractor notes.',
+    'Upload a property photo and get a budget, materials list, checklist, and PDF handoff for your next upgrade.',
   domain: 'https://spaceflippro.netlify.app',
   /** Replace when a dedicated support inbox is ready */
   supportEmail: 'bferrell514@gmail.com',

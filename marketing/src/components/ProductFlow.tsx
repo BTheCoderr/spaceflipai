@@ -1,55 +1,43 @@
 type FlowStep = {
-  label: string;
+  title: string;
   caption: string;
 };
 
 const steps: FlowStep[] = [
   {
-    label: 'Photo',
-    caption: 'Upload a property or space photo from your device.',
+    title: 'Upload a property photo',
+    caption:
+      'Start with a room, backyard, storefront, office, rental unit, or property exterior.',
   },
   {
-    label: 'AI Plan',
-    caption: 'Generate a structured upgrade plan from your project goal.',
+    title: 'Get an upgrade plan',
+    caption:
+      'Receive practical recommendations with budget ranges, materials, and action steps.',
   },
   {
-    label: 'Budget',
-    caption: 'Review budget ranges to frame decisions — not final quotes.',
-  },
-  {
-    label: 'Checklist',
-    caption: 'Prioritize materials, tasks, and contractor notes.',
-  },
-  {
-    label: 'PDF',
-    caption: 'Export a client-ready planning PDF you can share.',
+    title: 'Export a PDF handoff',
+    caption:
+      'Save the plan, share it, or hand it to a contractor, assistant, landlord, or client.',
   },
 ];
 
 export function ProductFlow() {
   return (
-    <section className="section section-alt">
+    <section id="how-it-works" className="section section-alt">
       <div className="container">
         <h2 className="section-title">How it works</h2>
         <p className="section-lead">
-          From photo to handoff in five practical steps — built for business planning, not
-          decorative mockups alone.
+          From photo to handoff in three simple steps — practical planning, not decorative
+          mockups.
         </p>
-        <ol className="flow-steps">
+        <ol className="how-steps">
           {steps.map((step, index) => (
-            <li key={step.label} className="flow-step">
-              <div className="flow-step-icon" aria-hidden="true">
+            <li key={step.title} className="card how-step">
+              <div className="how-step-num" aria-hidden="true">
                 {index + 1}
               </div>
-              <div className="flow-step-body">
-                <h3>{step.label}</h3>
-                <p>{step.caption}</p>
-              </div>
-              {index < steps.length - 1 ? (
-                <span className="flow-arrow" aria-hidden="true">
-                  →
-                </span>
-              ) : null}
+              <h3>{step.title}</h3>
+              <p>{step.caption}</p>
             </li>
           ))}
         </ol>

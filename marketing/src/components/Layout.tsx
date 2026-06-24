@@ -21,8 +21,14 @@ export function Layout() {
     <div className="site">
       <header className="header">
         <div className="container header-inner">
-          <Link to="/" className="brand">
-            <span className="brand-mark">SF</span>
+          <Link to="/" className="brand" aria-label={`${siteConfig.name} home`}>
+            <img
+              className="brand-logo"
+              src="/logo.png"
+              alt={`${siteConfig.name} logo`}
+              width={56}
+              height={56}
+            />
             <span className="brand-text">{siteConfig.name}</span>
           </Link>
           <nav className="nav" aria-label="Main">

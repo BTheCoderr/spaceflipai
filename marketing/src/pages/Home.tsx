@@ -27,9 +27,11 @@ const features = [
   },
 ];
 
+const earlyAccessMailto = mailto('SpaceFlip Pro — Early Access');
+
 export function HomePage() {
   usePageMeta({
-    title: 'AI Property Upgrade Plans',
+    title: 'Turn property photos into upgrade plans',
     description: siteConfig.description,
     path: '/',
   });
@@ -37,50 +39,43 @@ export function HomePage() {
   return (
     <>
       <section className="hero hero-strong">
-        <div className="container hero-grid">
-          <div className="hero-copy">
-            <p className="hero-kicker">SpaceFlip Pro</p>
-            <h1>AI upgrade plans for properties and spaces</h1>
-            <p className="hero-subhead">
-              Upload a property photo, generate a practical upgrade plan, and export a
-              client-ready PDF with budget, materials, checklist, and contractor notes.
-            </p>
-            <p className="hero-audience">
-              Built for Airbnb hosts, landlords, realtors, contractors, and small businesses.
-            </p>
-            <div className="hero-actions">
-              {siteConfig.appStoreLive ? (
-                <a
-                  className="btn btn-primary"
-                  href={siteConfig.appStoreUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Download on the App Store
-                </a>
-              ) : (
-                <span className="btn btn-disabled" aria-disabled="true">
-                  Coming soon on the App Store
-                </span>
-              )}
-              <a className="btn btn-secondary" href={mailto()}>
-                Contact support
-              </a>
-            </div>
-            {!siteConfig.appStoreLive ? (
-              <p className="coming-soon-note">
-                App Store listing is in preparation. Support, privacy, and terms pages are live
-                for App Store Connect.
-              </p>
-            ) : null}
+        <div className="container hero-centered">
+          <img
+            className="hero-logo"
+            src="/logo.png"
+            alt={`${siteConfig.name} logo`}
+            width={128}
+            height={128}
+          />
+          <p className="hero-kicker">SpaceFlip Pro</p>
+          <h1>Turn property photos into practical upgrade plans</h1>
+          <p className="hero-subhead">
+            Upload a property photo and get a budget, materials list, checklist, and PDF handoff
+            for your next upgrade.
+          </p>
+          <p className="hero-audience">
+            Built for Airbnb hosts, landlords, realtors, contractors, landscapers, and small
+            business owners.
+          </p>
+          <div className="hero-actions hero-actions-centered">
+            <a className="btn btn-primary" href={earlyAccessMailto}>
+              Join Early Access
+            </a>
+            <a className="btn btn-secondary" href="#how-it-works">
+              See How It Works
+            </a>
           </div>
+          <p className="hero-beta-note">
+            SpaceFlip Pro is preparing for early access. We’re working with property owners and
+            operators to improve practical upgrade planning workflows.
+          </p>
 
-          <div className="hero-card hero-card-accent">
+          <div className="hero-card hero-card-accent hero-card-centered">
             <h2>What you get</h2>
             <ul>
-              <li>Structured upgrade plan from a property photo</li>
-              <li>Budget range, materials, and priority checklist</li>
-              <li>PDF export for client and contractor handoff</li>
+              <li>A practical upgrade plan from a property photo</li>
+              <li>Budget range, materials, and a priority checklist</li>
+              <li>PDF handoff for clients, contractors, and assistants</li>
               <li>Your original property photo shown alongside the plan</li>
             </ul>
             <p className="hero-card-note">No subscriptions or payments.</p>
@@ -97,7 +92,7 @@ export function HomePage() {
       <section className="section">
         <div className="container">
           <h2 className="section-title">Core capabilities</h2>
-          <p className="section-lead">Available in the SpaceFlip Pro mobile app today.</p>
+          <p className="section-lead">The practical building blocks behind every SpaceFlip Pro plan.</p>
           <div className="grid-2">
             {features.map((feature) => (
               <div key={feature.title} className="card">

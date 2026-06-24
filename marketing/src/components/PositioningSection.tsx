@@ -1,14 +1,16 @@
 export function PositioningSection() {
   return (
-    <section className="section section-alt">
+    <section className="section">
       <div className="container">
+        <div className="positioning-band">
+          <p className="positioning-kicker">Why SpaceFlip Pro</p>
+          <p className="positioning-statement">
+            Most AI home design apps focus on pretty renders. SpaceFlip Pro focuses on practical
+            upgrade plans you can save, export, and hand off.
+          </p>
+        </div>
         <div className="positioning card">
           <h2 className="section-title">Practical plans, not pretty renders alone</h2>
-          <p>
-            SpaceFlip Pro is an AI property upgrade <strong>planning</strong> app — not just an AI
-            room visualizer. Most AI design apps focus on pretty renders. SpaceFlip Pro focuses on
-            practical upgrade plans you can save, export, and hand off.
-          </p>
           <ul>
             <li>
               <strong>Your property photo stays front and center</strong> — plans are built
