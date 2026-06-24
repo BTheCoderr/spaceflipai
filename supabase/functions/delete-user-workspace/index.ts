@@ -1,6 +1,10 @@
+// @ts-nocheck — Deno Edge Function (esm.sh imports + Deno global). The app's
+// tsconfig excludes supabase/functions; this directive stops the editor's
+// standalone TS server from flagging Deno-only syntax. Validated via Supabase.
 // SpaceFlip Pro — delete-user-workspace Edge Function
 // Deletes the authenticated user's app data (design_projects, generation_jobs,
-// storage objects under users/{uid}/) and the Supabase Auth user.
+// all storage objects under users/{uid}/ — inputs and generated outputs) and
+// the Supabase Auth user.
 //
 // This file is self-contained and can be pasted directly into the Supabase
 // Dashboard (Edge Functions → New function → delete-user-workspace).
@@ -12,7 +16,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
-const FUNCTION_VERSION = 'phase17-delete-workspace-v1';
+const FUNCTION_VERSION = 'phase18-delete-workspace-v2';
 const DESIGN_INPUTS_BUCKET = 'design-inputs';
 
 const corsHeaders = {
@@ -50,36 +54,66 @@ async function getAuthenticatedUserId(
   }
 }
 
+// Recursively deletes everything under users/{uid} — both inputs/... and
+// outputs/{jobId}/concept.png.
+async function deleteStoragePrefix(
+  supabase: ReturnType<typeof createClient>,
+  prefix: string,
+  result: { warned: boolean },
+  depth: number
+): Promise<void> {
+  if (depth > 6) {
+    result.warned = true;
+    return;
+  }
+
+  for (let page = 0; page < 50; page += 1) {
+    const { data: entries, error: listError } = await supabase.storage
+      .from(DESIGN_INPUTS_BUCKET)
+      .list(prefix, { limit: 100, offset: page * 100 });
+
+    if (listError) {
+      result.warned = true;
+      return;
+    }
+    if (!entries || entries.length === 0) return;
+
+    const filePaths: string[] = [];
+    const folders: string[] = [];
+    for (const entry of entries) {
+      if (entry.id) {
+        filePaths.push(`${prefix}/${entry.name}`);
+      } else {
+        folders.push(`${prefix}/${entry.name}`);
+      }
+    }
+
+    if (filePaths.length > 0) {
+      const { error: removeError } = await supabase.storage
+        .from(DESIGN_INPUTS_BUCKET)
+        .remove(filePaths);
+      if (removeError) result.warned = true;
+    }
+
+    for (const folder of folders) {
+      await deleteStoragePrefix(supabase, folder, result, depth + 1);
+    }
+
+    if (entries.length < 100) return;
+  }
+}
+
 async function deleteOwnStorage(
   supabase: ReturnType<typeof createClient>,
   userId: string
 ): Promise<boolean> {
-  const prefix = `users/${userId}/inputs`;
-  let warned = false;
+  const result = { warned: false };
   try {
-    for (let page = 0; page < 50; page += 1) {
-      const { data: files, error: listError } = await supabase.storage
-        .from(DESIGN_INPUTS_BUCKET)
-        .list(prefix, { limit: 100, offset: page * 100 });
-
-      if (listError) {
-        warned = true;
-        break;
-      }
-      if (!files || files.length === 0) break;
-
-      const paths = files.map((file) => `${prefix}/${file.name}`);
-      const { error: removeError } = await supabase.storage
-        .from(DESIGN_INPUTS_BUCKET)
-        .remove(paths);
-      if (removeError) warned = true;
-
-      if (files.length < 100) break;
-    }
+    await deleteStoragePrefix(supabase, `users/${userId}`, result, 0);
   } catch {
-    warned = true;
+    result.warned = true;
   }
-  return warned;
+  return result.warned;
 }
 
 Deno.serve(async (req: Request) => {

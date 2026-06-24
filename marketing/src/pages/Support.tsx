@@ -47,11 +47,11 @@ export function SupportPage() {
       </div>
 
       <div className="notice" style={{ marginTop: '1.5rem' }}>
-        <strong>MVP transparency</strong>
+        <strong>How it works</strong>
         <p>
-          Payments are not active yet. Advisor chat is preview-only. Concept images are planning
-          references. AI generation may fall back to demo plans if a provider or network issue
-          occurs.
+          SpaceFlip Pro generates AI-assisted upgrade plans, budgets, materials, checklists, and
+          PDF exports from your property photo. There are no subscriptions or payments. Plans are
+          planning drafts to verify with qualified professionals.
         </p>
       </div>
     </PageShell>
@@ -84,18 +84,17 @@ const faqItems = [
     answer: (
       <p>
         Exported PDFs include your project details, upgrade summary, budget range, materials,
-        priority checklist, contractor notes, and labeled property photos. Concept images are
-        marked as planning references.
+        priority checklist, contractor notes, and your original property photo.
       </p>
     ),
   },
   {
-    question: 'Are concept images final designs?',
+    question: 'Does the app generate design images?',
     answer: (
       <p>
-        No. Concept images are planning references only — not final renders or guaranteed design
-        outcomes. Final design, pricing, and construction should be verified with qualified
-        professionals.
+        The current version focuses on practical upgrade plans, budgets, materials, checklists, and
+        PDF handoff documents. Your original property photo is shown alongside the plan. Final
+        design, pricing, and construction should be verified with qualified professionals.
       </p>
     ),
   },
@@ -103,8 +102,7 @@ const faqItems = [
     question: 'Is there a subscription?',
     answer: (
       <p>
-        No. Payments and subscriptions are not active in the current MVP build. The app is in MVP
-        testing mode.
+        No. SpaceFlip Pro has no subscriptions, payments, or in-app purchases.
       </p>
     ),
   },
@@ -131,12 +129,12 @@ const faqItems = [
     ),
   },
   {
-    question: 'Why did I get a Demo/Fallback plan?',
+    question: 'What if AI generation is briefly unavailable?',
     answer: (
       <p>
-        If AI generation is temporarily unavailable (network issue, provider limit, or service
-        error), the app may show a demo or fallback planning draft so you can still review the
-        workflow. The Result screen notes when a fallback plan was used.
+        If a provider or network issue occurs, the app still prepares an upgrade plan from your
+        project details so you can review every tab and export a PDF. Your original property photo
+        is always shown alongside the plan.
       </p>
     ),
   },

@@ -1,35 +1,18 @@
 // @ts-nocheck
 // Dashboard paste-only — not part of Expo typecheck or modular CLI deploy.
 // =============================================================================
-// SpaceFlip Pro — generate-upgrade-plan (Phase 9, single-file Dashboard build)
+// SpaceFlip Pro — generate-upgrade-plan (single-file Dashboard build)
 // -----------------------------------------------------------------------------
-// Paste this entire file into:
-//   Supabase Dashboard → Edge Functions → generate-upgrade-plan → Edit source
-//
-// Behavior matches the local modular version:
-//   - Provider order: Gemini (vision) → Groq (text) → mock fallback
-//   - Image generation stays MOCKED (Unsplash URLs by project type)
+// Behavior:
+//   - Provider order: Gemini (vision) -> Groq (text) -> mock plan-text fallback
+//   - No stock/mock concept image: when image generation is OFF (default) or fails,
+//     result_image_url = the user's ORIGINAL property photo and concept_image_url = null
 //   - Never fails the user flow on AI errors — always completes the job
-//   - Secrets read from Deno.env (GEMINI_API_KEY, GROQ_API_KEY)
 //   - verify_jwt=false compatible (app invokes with anon key)
-//
-// Required Edge Function secrets (already managed via Supabase secrets):
-//   GEMINI_API_KEY            (primary)
-//   GROQ_API_KEY              (optional fallback)
-//   SUPABASE_URL              (auto-provided by platform)
-//   SUPABASE_SERVICE_ROLE_KEY (auto-provided by platform)
-//
-// Optional provider controls (Supabase secrets):
-//   GEMINI_DISABLED=true              skip Gemini entirely
-//   AI_PROVIDER_PREFERENCE=auto       auto | gemini | groq (default: auto)
-//   On Gemini 429, Groq is tried immediately (no Gemini retry).
 // =============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
-// -----------------------------------------------------------------------------
-// Types (inlined from _shared/types.ts)
-// -----------------------------------------------------------------------------
 type UpgradePlanPayload = {
   upgradeSummary: string;
   businessOutcome: string;
@@ -62,6 +45,11 @@ type GenerationJobRecord = {
   source: string | null;
   estimated_cost_cents: number | null;
   error_message: string | null;
+  concept_image_url?: string | null;
+  image_provider?: string | null;
+  image_generation_status?: string | null;
+  image_generation_error?: string | null;
+  estimated_image_cost_cents?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -97,23 +85,13 @@ type GenerateUpgradePlanResponse = {
   estimatedCostCents?: number;
   promptPreview?: string;
   functionVersion?: string;
+  conceptImageUrl?: string;
+  imageProvider?: string;
+  imageGenerationStatus?: string;
+  estimatedImageCostCents?: number;
   error?: string;
 };
 
-type GenerateUpgradeImageInput = {
-  imageUrl: string;
-  prompt: string;
-  projectType: string;
-};
-
-type GenerateUpgradeImageResult = {
-  resultImageUrl: string;
-  estimatedCostCents: number;
-};
-
-// -----------------------------------------------------------------------------
-// Prompt builder (inlined from _shared/promptBuilder.ts)
-// -----------------------------------------------------------------------------
 const PROJECT_PROMPTS: Record<string, string> = {
   'airbnb-unit':
     'Create a realistic property upgrade concept for this Airbnb unit. Focus on stronger listing photo appeal, guest confidence, brighter staging, practical furniture placement, and a budget-aware checklist. Preserve room structure, windows, doors, and flooring unless the user requested changes.',
@@ -166,29 +144,11 @@ function buildUpgradePrompt(job: GenerationJobRecord): string {
     formatBudget(job.budget_range),
     formatNotes(job.notes),
     imageUrl ? `Input property photo: ${imageUrl}` : 'Input property photo: not provided.',
-    'Output: one realistic upgraded concept image plus a practical upgrade plan. Preserve architecture unless scope says otherwise.',
+    'Output: a practical upgrade plan. Preserve architecture unless scope says otherwise.',
   ].filter(Boolean);
 
   return sections.join('\n\n');
 }
-
-// -----------------------------------------------------------------------------
-// AI provider + mocks (inlined from _shared/aiProvider.ts)
-// -----------------------------------------------------------------------------
-const MOCK_RESULTS: Record<string, string> = {
-  'airbnb-unit': 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600',
-  'office-space': 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600',
-  'retail-store': 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600',
-  restaurant: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600',
-  'salon-studio': 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600',
-  'backyard-landscape': 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=600',
-  'home-exterior': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600',
-  'real-estate-listing': 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
-  'empty-commercial': 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600',
-};
-
-const DEFAULT_MOCK =
-  'https://images.unsplash.com/photo-1618221197160-8070ed78f1c9?w=600';
 
 const MOCK_PLAN_BY_TYPE: Record<string, Omit<UpgradePlanPayload, 'budgetRange'>> = {
   'airbnb-unit': {
@@ -292,26 +252,14 @@ const UPGRADE_PLAN_JSON_SCHEMA = `{
   "photoPrepTips": ["string array of 2-4 photo prep tips"]
 }`;
 
-/**
- * Removes anything that looks like a provider API key, an `key=`/`api_key=`
- * query param, or a full generativelanguage URL (which carries the key) so it
- * is never written to Supabase logs. Behavior-neutral — log sanitation only.
- */
 function redactSecrets(text: unknown): string {
   let out = typeof text === 'string' ? text : String(text ?? '');
-
-  // key=... or api_key=... in query strings or JSON
   out = out.replace(/(api[_-]?key|key)\s*[=:]\s*["']?[A-Za-z0-9._\-]+["']?/gi, '$1=[REDACTED]');
-  // Google Gemini key prefix (e.g. AIza..., AQ....)
   out = out.replace(/AIza[0-9A-Za-z._\-]{10,}/g, '[REDACTED]');
   out = out.replace(/AQ\.[0-9A-Za-z._\-]{10,}/g, '[REDACTED]');
-  // Groq key prefix
   out = out.replace(/gsk_[0-9A-Za-z]{10,}/g, '[REDACTED]');
-  // Bearer tokens
   out = out.replace(/Bearer\s+[0-9A-Za-z._\-]+/gi, 'Bearer [REDACTED]');
-  // Full generativelanguage URLs carry the key in the query string
   out = out.replace(/https?:\/\/generativelanguage\.googleapis\.com\/\S*/gi, '[REDACTED_URL]');
-
   return out.slice(0, 200);
 }
 
@@ -333,7 +281,6 @@ function isStringArray(value: unknown): value is string[] {
 function parseUpgradePlanPayload(raw: unknown, fallbackBudget: string): UpgradePlanPayload | null {
   if (!raw || typeof raw !== 'object') return null;
   const record = raw as Record<string, unknown>;
-
   if (
     !isNonEmptyString(record.upgradeSummary) ||
     !isNonEmptyString(record.businessOutcome) ||
@@ -345,7 +292,6 @@ function parseUpgradePlanPayload(raw: unknown, fallbackBudget: string): UpgradeP
   ) {
     return null;
   }
-
   return {
     upgradeSummary: record.upgradeSummary.trim(),
     businessOutcome: record.businessOutcome.trim(),
@@ -360,13 +306,11 @@ function parseUpgradePlanPayload(raw: unknown, fallbackBudget: string): UpgradeP
 
 function extractJsonFromText(content: string): unknown | null {
   const trimmed = content.trim();
-
   try {
     return JSON.parse(trimmed);
   } catch {
     // fall through
   }
-
   const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fenceMatch?.[1]) {
     try {
@@ -375,7 +319,6 @@ function extractJsonFromText(content: string): unknown | null {
       return null;
     }
   }
-
   const start = trimmed.indexOf('{');
   const end = trimmed.lastIndexOf('}');
   if (start >= 0 && end > start) {
@@ -385,13 +328,11 @@ function extractJsonFromText(content: string): unknown | null {
       return null;
     }
   }
-
   return null;
 }
 
 function buildUpgradePlanPrompt(input: GenerateUpgradePlanTextInput): string {
   const budgetRange = resolveBudgetRange(input.budgetRange);
-
   return [
     'You are SpaceFlip Pro, a property upgrade planning assistant for commercial and residential spaces.',
     'Write a practical, budget-aware upgrade plan for contractors and property owners.',
@@ -418,7 +359,6 @@ function mockGenerateUpgradePlanText(input: GenerateUpgradePlanTextInput): Upgra
   const base = MOCK_PLAN_BY_TYPE[input.projectType] ?? DEFAULT_MOCK_PLAN;
   const goalNote = input.goal?.trim() ? ` Goal focus: ${input.goal.trim()}.` : '';
   const notesNote = input.notes?.trim() ? ` Notes: ${input.notes.trim()}.` : '';
-
   return {
     ...base,
     upgradeSummary: `${base.upgradeSummary}${goalNote}${notesNote}`,
@@ -432,14 +372,12 @@ async function fetchImageForGemini(
   if (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
     return null;
   }
-
   try {
     const response = await fetch(imageUrl);
     if (!response.ok) {
       console.warn('[aiProvider] Property photo fetch failed:', response.status);
       return null;
     }
-
     const contentType = response.headers.get('content-type') ?? 'image/jpeg';
     const mimeType = contentType.split(';')[0].trim() || 'image/jpeg';
     const buffer = await response.arrayBuffer();
@@ -448,7 +386,6 @@ async function fetchImageForGemini(
     for (let i = 0; i < bytes.length; i++) {
       binary += String.fromCharCode(bytes[i]);
     }
-
     return { mimeType, data: btoa(binary) };
   } catch (error) {
     console.warn('[aiProvider] Property photo fetch threw', {
@@ -465,9 +402,7 @@ async function generateWithGemini(
   const budgetRange = resolveBudgetRange(input.budgetRange);
   const prompt = buildUpgradePlanPrompt(input);
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-
   const parts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = [];
-
   if (input.inputPublicUrl) {
     const image = await fetchImageForGemini(input.inputPublicUrl);
     if (image) {
@@ -476,9 +411,7 @@ async function generateWithGemini(
       console.warn('[aiProvider] Could not load property photo — plan will use text context only');
     }
   }
-
   parts.push({ text: prompt });
-
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -490,27 +423,23 @@ async function generateWithGemini(
       },
     }),
   });
-
   if (!response.ok) {
     const httpStatus = response.status;
     const safeMessage = redactSecrets(await response.text().catch(() => ''));
     console.warn('[aiProvider] Gemini request failed', { status: httpStatus, message: safeMessage });
     return { payload: null, httpStatus };
   }
-
   const data = await response.json();
   const content = data?.candidates?.[0]?.content?.parts?.[0]?.text;
   if (typeof content !== 'string') {
     console.warn('[aiProvider] Gemini response missing content');
     return { payload: null };
   }
-
   const parsed = extractJsonFromText(content);
   if (!parsed) {
     console.warn('[aiProvider] Gemini JSON parse failed');
     return { payload: null };
   }
-
   return { payload: parseUpgradePlanPayload(parsed, budgetRange) };
 }
 
@@ -520,7 +449,6 @@ async function generateWithGroqOptional(
 ): Promise<UpgradePlanPayload | null> {
   const budgetRange = resolveBudgetRange(input.budgetRange);
   const prompt = buildUpgradePlanPrompt(input);
-
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -542,26 +470,22 @@ async function generateWithGroqOptional(
       ],
     }),
   });
-
   if (!response.ok) {
     const safeMessage = redactSecrets(await response.text().catch(() => ''));
     console.warn('[aiProvider] Groq request failed', { status: response.status, message: safeMessage });
     return null;
   }
-
   const data = await response.json();
   const content = data?.choices?.[0]?.message?.content;
   if (typeof content !== 'string') {
     console.warn('[aiProvider] Groq response missing content');
     return null;
   }
-
   const parsed = extractJsonFromText(content);
   if (!parsed) {
     console.warn('[aiProvider] Groq JSON parse failed');
     return null;
   }
-
   return parseUpgradePlanPayload(parsed, budgetRange);
 }
 
@@ -606,7 +530,6 @@ async function generateUpgradePlanText(
       return { result: null, rateLimited: false };
     }
     if (!geminiKey) return { result: null, rateLimited: false };
-
     try {
       const { payload, httpStatus } = await generateWithGemini(input, geminiKey);
       if (payload) {
@@ -630,13 +553,11 @@ async function generateUpgradePlanText(
     }
   };
 
-  // Groq-only preference
   if (preference === 'groq') {
     const groqResult = await tryGroq();
     return groqResult ?? mockFallback();
   }
 
-  // Gemini-only preference (429 still falls through to Groq for MVP stability)
   if (preference === 'gemini') {
     const { result, rateLimited } = await tryGemini();
     if (result) return result;
@@ -647,36 +568,331 @@ async function generateUpgradePlanText(
     return mockFallback();
   }
 
-  // auto — Gemini → Groq → mock (no Gemini retry on 429)
   const { result: geminiResult, rateLimited } = await tryGemini();
   if (geminiResult) return geminiResult;
-
   if (rateLimited || !geminiResult) {
     const groqResult = await tryGroq();
     if (groqResult) return groqResult;
   }
-
   if (!geminiKey && !groqKey) {
     console.warn('[aiProvider] GEMINI_API_KEY and GROQ_API_KEY missing — using mock plan text');
   }
-
   return mockFallback();
 }
 
-// Image generation stays mocked for MVP cost control.
-async function generateUpgradeImage(
-  input: GenerateUpgradeImageInput
-): Promise<GenerateUpgradeImageResult> {
-  const resultImageUrl = MOCK_RESULTS[input.projectType] ?? DEFAULT_MOCK;
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  return { resultImageUrl, estimatedCostCents: 0 };
+const DESIGN_INPUTS_BUCKET = 'design-inputs';
+const REPLICATE_MODEL = 'black-forest-labs/flux-kontext-pro';
+const REPLICATE_COST_CENTS = 4;
+const STABILITY_COST_CENTS = 4;
+
+type ConceptImageInput = {
+  projectType: string;
+  goal: string | null;
+  budgetRange: string | null;
+  notes: string | null;
+  planSummary: string | null;
+  inputImageUrl: string;
+};
+
+type ConceptImageResult =
+  | { status: 'disabled' }
+  | { status: 'success'; bytes: Uint8Array; contentType: string; provider: string; costCents: number }
+  | { status: 'failed'; provider: string; costCents: number; error: string };
+
+function redactImg(text: unknown): string {
+  let out = typeof text === 'string' ? text : String(text ?? '');
+  out = out.replace(/Bearer\s+[0-9A-Za-z._\-]+/gi, 'Bearer [REDACTED]');
+  out = out.replace(/r8_[0-9A-Za-z]{10,}/g, '[REDACTED]');
+  out = out.replace(/sk-[0-9A-Za-z]{10,}/g, '[REDACTED]');
+  return out.slice(0, 200);
 }
 
-// -----------------------------------------------------------------------------
-// HTTP handler (inlined from generate-upgrade-plan/index.ts)
-// -----------------------------------------------------------------------------
+function isImageGenerationEnabled(): boolean {
+  return Deno.env.get('IMAGE_GENERATION_ENABLED') === 'true';
+}
+
+function getImageProvider(): 'replicate' | 'stability' {
+  const p = Deno.env.get('IMAGE_GENERATION_PROVIDER')?.trim().toLowerCase();
+  return p === 'stability' ? 'stability' : 'replicate';
+}
+
+function maxImagesPerUserPerDay(): number {
+  const raw = Number(Deno.env.get('MAX_IMAGE_GENERATIONS_PER_USER_PER_DAY') ?? '5');
+  return Number.isFinite(raw) && raw > 0 ? raw : 5;
+}
+
+function projectTypeGuidance(projectType: string): string {
+  switch (projectType) {
+    case 'airbnb-unit':
+      return 'Make the space feel guest-ready, clean, durable, and photographable. Use practical furnishings and decor that could improve listing presentation.';
+    case 'backyard-landscape':
+    case 'home-exterior':
+    case 'real-estate-listing':
+      return 'Preserve the property structure, driveway, roofline, yard shape, and camera angle. Improve curb appeal with realistic landscaping, lighting, paint/material suggestions, and staging appropriate for the budget.';
+    case 'office-space':
+    case 'retail-store':
+    case 'restaurant':
+    case 'salon-studio':
+    case 'empty-commercial':
+      return 'Make the space more organized, functional, customer/client-ready, and commercially practical.';
+    default:
+      return 'Improve the space in a clean, practical, business-friendly way appropriate for the budget.';
+  }
+}
+
+function buildConceptImagePrompt(input: ConceptImageInput): string {
+  const goal = input.goal?.trim() || 'improve the space for its intended use';
+  const budget = input.budgetRange?.trim() || 'mid-range, practical';
+  const summary = input.planSummary?.trim();
+  return [
+    'Create a realistic concept reference for this property upgrade.',
+    'Preserve the original room/property layout, camera angle, walls, windows, doors, major structures, and perspective.',
+    `Upgrade the space for ${input.projectType}.`,
+    `Goal: ${goal}.`,
+    `Budget level: ${budget}.`,
+    projectTypeGuidance(input.projectType),
+    summary ? `Plan context: ${summary}` : '',
+    'Style should be clean, practical, business-friendly, and achievable.',
+    'Do not add impossible architecture. Do not add people. Do not add text or watermarks.',
+    'This is a planning reference, not a final construction rendering.',
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
+async function fetchImageBytes(url: string): Promise<{ bytes: Uint8Array; contentType: string }> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`input_image_fetch_failed_${response.status}`);
+  }
+  const contentType = (response.headers.get('content-type') ?? 'image/png').split(';')[0].trim();
+  const buffer = await response.arrayBuffer();
+  return { bytes: new Uint8Array(buffer), contentType: contentType || 'image/png' };
+}
+
+async function generateWithReplicate(
+  input: ConceptImageInput,
+  token: string,
+  prompt: string
+): Promise<ConceptImageResult> {
+  const createRes = await fetch(
+    `https://api.replicate.com/v1/models/${REPLICATE_MODEL}/predictions`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Prefer: 'wait',
+      },
+      body: JSON.stringify({
+        input: {
+          prompt,
+          input_image: input.inputImageUrl,
+          output_format: 'png',
+          aspect_ratio: 'match_input_image',
+          safety_tolerance: 2,
+        },
+      }),
+    }
+  );
+  if (!createRes.ok) {
+    const msg = redactImg(await createRes.text().catch(() => ''));
+    console.warn('[imageProvider] Replicate create failed', { status: createRes.status, message: msg });
+    return { status: 'failed', provider: 'replicate', costCents: 0, error: `replicate_${createRes.status}` };
+  }
+  let prediction = await createRes.json();
+  const getUrl: string | undefined = prediction?.urls?.get;
+  for (
+    let i = 0;
+    i < 30 && prediction?.status && !['succeeded', 'failed', 'canceled'].includes(prediction.status);
+    i += 1
+  ) {
+    await new Promise((r) => setTimeout(r, 2000));
+    if (!getUrl) break;
+    const pollRes = await fetch(getUrl, { headers: { Authorization: `Bearer ${token}` } });
+    if (!pollRes.ok) break;
+    prediction = await pollRes.json();
+  }
+  if (prediction?.status !== 'succeeded') {
+    console.warn('[imageProvider] Replicate did not succeed', { status: prediction?.status });
+    return { status: 'failed', provider: 'replicate', costCents: 0, error: 'replicate_not_succeeded' };
+  }
+  const output = prediction.output;
+  const outputUrl: string | undefined = Array.isArray(output) ? output[0] : output;
+  if (typeof outputUrl !== 'string') {
+    return { status: 'failed', provider: 'replicate', costCents: 0, error: 'replicate_no_output' };
+  }
+  try {
+    const { bytes, contentType } = await fetchImageBytes(outputUrl);
+    return { status: 'success', bytes, contentType, provider: 'replicate', costCents: REPLICATE_COST_CENTS };
+  } catch (error) {
+    console.warn('[imageProvider] Replicate output download failed', { message: redactImg(error) });
+    return { status: 'failed', provider: 'replicate', costCents: REPLICATE_COST_CENTS, error: 'replicate_download_failed' };
+  }
+}
+
+async function generateWithStability(
+  input: ConceptImageInput,
+  apiKey: string,
+  prompt: string
+): Promise<ConceptImageResult> {
+  let source: { bytes: Uint8Array; contentType: string };
+  try {
+    source = await fetchImageBytes(input.inputImageUrl);
+  } catch (error) {
+    console.warn('[imageProvider] Stability input fetch failed', { message: redactImg(error) });
+    return { status: 'failed', provider: 'stability', costCents: 0, error: 'stability_input_fetch_failed' };
+  }
+  const form = new FormData();
+  form.append('image', new Blob([source.bytes], { type: source.contentType }), 'input.png');
+  form.append('prompt', prompt);
+  form.append('control_strength', '0.7');
+  form.append('output_format', 'png');
+  const res = await fetch('https://api.stability.ai/v2beta/stable-image/control/structure', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, Accept: 'image/*' },
+    body: form,
+  });
+  if (!res.ok) {
+    const msg = redactImg(await res.text().catch(() => ''));
+    console.warn('[imageProvider] Stability failed', { status: res.status, message: msg });
+    return { status: 'failed', provider: 'stability', costCents: 0, error: `stability_${res.status}` };
+  }
+  const buffer = await res.arrayBuffer();
+  return {
+    status: 'success',
+    bytes: new Uint8Array(buffer),
+    contentType: 'image/png',
+    provider: 'stability',
+    costCents: STABILITY_COST_CENTS,
+  };
+}
+
+async function generateConceptImage(input: ConceptImageInput): Promise<ConceptImageResult> {
+  if (!isImageGenerationEnabled()) {
+    return { status: 'disabled' };
+  }
+  if (!input.inputImageUrl || !/^https?:\/\//.test(input.inputImageUrl)) {
+    return { status: 'failed', provider: getImageProvider(), costCents: 0, error: 'no_public_input_image' };
+  }
+  const provider = getImageProvider();
+  const prompt = buildConceptImagePrompt(input);
+  try {
+    if (provider === 'stability') {
+      const key = Deno.env.get('STABILITY_API_KEY');
+      if (!key) return { status: 'failed', provider, costCents: 0, error: 'missing_stability_key' };
+      return await generateWithStability(input, key, prompt);
+    }
+    const token = Deno.env.get('REPLICATE_API_TOKEN');
+    if (!token) return { status: 'failed', provider, costCents: 0, error: 'missing_replicate_token' };
+    return await generateWithReplicate(input, token, prompt);
+  } catch (error) {
+    console.warn('[imageProvider] Unexpected error', { provider, message: redactImg(error) });
+    return { status: 'failed', provider, costCents: 0, error: 'unexpected_error' };
+  }
+}
+
+type ConceptImageOutcome = {
+  resultImageUrl: string;
+  conceptImageUrl: string | null;
+  imageProvider: string;
+  imageGenerationStatus: string;
+  imageGenerationError: string | null;
+  estimatedImageCostCents: number;
+};
+
+async function maybeGenerateConceptImage(
+  supabase: ReturnType<typeof createClient>,
+  record: GenerationJobRecord,
+  jobId: string,
+  originalImageUrl: string,
+  planSummary: string | null
+): Promise<ConceptImageOutcome> {
+  // Default (no real concept image): show the user's original property photo.
+  const fallback: ConceptImageOutcome = {
+    resultImageUrl: originalImageUrl,
+    conceptImageUrl: null,
+    imageProvider: 'none',
+    imageGenerationStatus: 'not_generated',
+    imageGenerationError: null,
+    estimatedImageCostCents: 0,
+  };
+
+  if (!isImageGenerationEnabled()) {
+    return { ...fallback, imageGenerationStatus: 'disabled' };
+  }
+
+  try {
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    const { count } = await supabase
+      .from('generation_jobs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', record.user_id)
+      .eq('image_generation_status', 'completed')
+      .gte('created_at', since.toISOString());
+    if (typeof count === 'number' && count >= maxImagesPerUserPerDay()) {
+      console.warn('[generate-upgrade-plan] Image generation daily limit reached for user');
+      return { ...fallback, imageGenerationStatus: 'skipped_limit' };
+    }
+  } catch {
+    // Proceed if the guard query fails (one image per job is still bounded).
+  }
+
+  const inputImageUrl = record.input_public_url ?? record.input_image_uri ?? '';
+  const concept = await generateConceptImage({
+    projectType: record.project_type,
+    goal: record.goal,
+    budgetRange: record.budget_range,
+    notes: record.notes,
+    planSummary,
+    inputImageUrl,
+  });
+
+  if (concept.status === 'disabled') {
+    return { ...fallback, imageGenerationStatus: 'disabled' };
+  }
+
+  if (concept.status === 'failed') {
+    // Do not expose provider failure to the user; keep the original photo.
+    return {
+      ...fallback,
+      imageProvider: 'none',
+      imageGenerationStatus: 'failed',
+      imageGenerationError: concept.error,
+      estimatedImageCostCents: concept.costCents,
+    };
+  }
+
+  const path = `users/${record.user_id}/outputs/${jobId}/concept.png`;
+  const { error: uploadError } = await supabase.storage
+    .from(DESIGN_INPUTS_BUCKET)
+    .upload(path, concept.bytes, { contentType: concept.contentType, upsert: true });
+
+  if (uploadError) {
+    console.warn('[generate-upgrade-plan] Concept image upload failed:', uploadError.message);
+    return {
+      ...fallback,
+      imageProvider: 'none',
+      imageGenerationStatus: 'failed',
+      imageGenerationError: 'storage_upload_failed',
+      estimatedImageCostCents: concept.costCents,
+    };
+  }
+
+  const { data: pub } = supabase.storage.from(DESIGN_INPUTS_BUCKET).getPublicUrl(path);
+  return {
+    resultImageUrl: pub.publicUrl,
+    conceptImageUrl: pub.publicUrl,
+    imageProvider: concept.provider,
+    imageGenerationStatus: 'completed',
+    imageGenerationError: null,
+    estimatedImageCostCents: concept.costCents,
+  };
+}
+
 const DEMO_USER_ID = 'demo-user';
-const FUNCTION_VERSION = 'phase16-auth-v1';
+const FUNCTION_VERSION = 'phase19-no-mock-image-v1';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -693,10 +909,6 @@ function jsonResponse(body: GenerateUpgradePlanResponse, status = 200): Response
   });
 }
 
-/**
- * Resolves the authenticated user id from the incoming session JWT.
- * Returns null for anon-key requests or invalid tokens. Never logs the token.
- */
 async function getAuthenticatedUserId(
   supabase: ReturnType<typeof createClient>,
   authHeader: string | null
@@ -717,75 +929,57 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
-
   if (req.method !== 'POST') {
     return jsonResponse({ ok: false, error: 'Method not allowed' }, 405);
   }
-
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
   if (!supabaseUrl || !serviceRoleKey) {
     console.error('[generate-upgrade-plan] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
     return jsonResponse({ ok: false, error: 'Server configuration error' }, 500);
   }
-
   let body: GenerateUpgradePlanRequest;
   try {
     body = (await req.json()) as GenerateUpgradePlanRequest;
   } catch {
     return jsonResponse({ ok: false, error: 'Invalid JSON body' }, 400);
   }
-
   const jobId = body.jobId?.trim();
   const userId = body.userId?.trim() || DEMO_USER_ID;
-
   if (!jobId) {
     return jsonResponse({ ok: false, error: 'jobId is required' }, 400);
   }
-
   const supabase = createClient(supabaseUrl, serviceRoleKey);
-
   const { data: job, error: fetchError } = await supabase
     .from('generation_jobs')
     .select('*')
     .eq('id', jobId)
     .maybeSingle();
-
   if (fetchError) {
     console.error('[generate-upgrade-plan] Fetch job failed:', fetchError.message);
     return jsonResponse({ ok: false, error: 'Could not load generation job' }, 500);
   }
-
   if (!job) {
     return jsonResponse({ ok: false, error: 'Generation job not found' }, 404);
   }
-
   const record = job as GenerationJobRecord;
-
-  // Prefer the verified JWT user id over any client-provided body userId.
   const authUserId = await getAuthenticatedUserId(supabase, req.headers.get('Authorization'));
   const effectiveUserId = authUserId ?? userId;
   console.log('[generate-upgrade-plan] auth resolved:', authUserId ? 'jwt' : 'fallback-body');
-
   if (record.user_id !== effectiveUserId) {
     return jsonResponse({ ok: false, error: 'User does not match job' }, 403);
   }
-
   const { error: processingError } = await supabase
     .from('generation_jobs')
     .update({ status: 'processing', error_message: null })
     .eq('id', jobId);
-
   if (processingError) {
     console.error('[generate-upgrade-plan] Update processing failed:', processingError.message);
     return jsonResponse({ ok: false, error: 'Could not update job status' }, 500);
   }
-
   try {
     const prompt = buildUpgradePrompt(record);
     const inputImageUrl = record.input_public_url ?? record.input_image_uri ?? '';
-
     const planResult = await generateUpgradePlanText({
       projectType: record.project_type,
       goal: record.goal,
@@ -794,7 +988,6 @@ Deno.serve(async (req: Request) => {
       inputPublicUrl: inputImageUrl,
       prompt,
     });
-
     if (planResult.source === 'mock') {
       if (!Deno.env.get('GEMINI_API_KEY') && !Deno.env.get('GROQ_API_KEY')) {
         console.warn('[generate-upgrade-plan] GEMINI_API_KEY and GROQ_API_KEY missing — using mock plan text');
@@ -802,63 +995,69 @@ Deno.serve(async (req: Request) => {
         console.warn('[generate-upgrade-plan] AI plan generation failed — using mock plan text');
       }
     }
-
-    const { resultImageUrl } = await generateUpgradeImage({
-      imageUrl: inputImageUrl,
-      prompt,
-      projectType: record.project_type,
-    });
-
     const resultPayload = planResult.payload;
     const planSource = planResult.source;
     const aiProvider = planResult.provider;
     const estimatedCostCents = 0;
-
+    // Real AI concept image only when enabled; otherwise the user's original
+    // property photo is used as the visual (never a stock/mock image).
+    const originalImageUrl = record.input_public_url ?? record.input_image_uri ?? inputImageUrl ?? '';
+    const image = await maybeGenerateConceptImage(
+      supabase,
+      record,
+      jobId,
+      originalImageUrl,
+      resultPayload?.upgradeSummary ?? null
+    );
     const { error: completeError } = await supabase
       .from('generation_jobs')
       .update({
         status: 'completed',
-        result_image_url: resultImageUrl,
+        result_image_url: image.resultImageUrl,
         result_payload: resultPayload,
         plan_source: planSource,
         ai_provider: aiProvider,
         estimated_cost_cents: estimatedCostCents,
+        concept_image_url: image.conceptImageUrl,
+        image_provider: image.imageProvider,
+        image_generation_status: image.imageGenerationStatus,
+        image_generation_error: image.imageGenerationError,
+        estimated_image_cost_cents: image.estimatedImageCostCents,
         error_message: null,
       })
       .eq('id', jobId);
-
     if (completeError) {
       console.error('[generate-upgrade-plan] Complete job failed:', completeError.message);
       return jsonResponse({ ok: false, error: 'Could not save generation result' }, 500);
     }
-
     const promptPreview = prompt.length > 280 ? `${prompt.slice(0, 277)}...` : prompt;
-
     console.log('[generate-upgrade-plan] functionVersion', FUNCTION_VERSION);
     console.log('[generate-upgrade-plan] planSource', planSource);
     console.log('[generate-upgrade-plan] aiProvider', aiProvider);
-    console.log('[generate-upgrade-plan] resultPayload keys', Object.keys(resultPayload ?? {}));
-
+    console.log('[generate-upgrade-plan] imageProvider', image.imageProvider);
+    console.log('[generate-upgrade-plan] imageGenerationStatus', image.imageGenerationStatus);
     return jsonResponse({
       ok: true,
       jobId,
-      resultImageUrl,
+      resultImageUrl: image.resultImageUrl,
       resultPayload,
       planSource,
       aiProvider,
       estimatedCostCents,
       promptPreview,
       functionVersion: FUNCTION_VERSION,
+      conceptImageUrl: image.conceptImageUrl ?? undefined,
+      imageProvider: image.imageProvider,
+      imageGenerationStatus: image.imageGenerationStatus,
+      estimatedImageCostCents: image.estimatedImageCostCents,
     });
   } catch (error) {
     const rawMessage = error instanceof Error ? error.message : 'Generation failed';
     const message = redactSecrets(rawMessage);
-
     await supabase
       .from('generation_jobs')
       .update({ status: 'failed', error_message: message })
       .eq('id', jobId);
-
     console.error('[generate-upgrade-plan] Generation failed:', message);
     return jsonResponse({ ok: false, error: message }, 500);
   }

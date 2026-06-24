@@ -14,16 +14,16 @@ const features = [
     body: 'Practical planning drafts based on your property photo and project goals.',
   },
   {
-    title: 'Business advisor agents',
-    body: 'Preview-only advisors that route into Visualize workflows by project type.',
+    title: 'Project guides',
+    body: 'Guides that route you into the Visualize workflow by project type.',
   },
   {
     title: 'Saved projects',
     body: 'Keep plans organized for repeat visits, exports, and handoffs.',
   },
   {
-    title: 'Honest MVP labeling',
-    body: 'Concept references and fallback plans are clearly labeled in the app.',
+    title: 'Clear, honest plans',
+    body: 'Practical upgrade plans, budgets, and checklists you can hand to clients and contractors.',
   },
 ];
 
@@ -81,9 +81,9 @@ export function HomePage() {
               <li>Structured upgrade plan from a property photo</li>
               <li>Budget range, materials, and priority checklist</li>
               <li>PDF export for client and contractor handoff</li>
-              <li>Concept images labeled as planning references</li>
+              <li>Your original property photo shown alongside the plan</li>
             </ul>
-            <p className="hero-card-note">Payments are not active in the current MVP build.</p>
+            <p className="hero-card-note">No subscriptions or payments.</p>
           </div>
         </div>
       </section>

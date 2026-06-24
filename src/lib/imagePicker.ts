@@ -1,8 +1,10 @@
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { Asset } from 'expo-asset';
+import type { ExamplePropertyPhoto } from '../data/examplePropertyPhotos';
 
-export type PickedImageSource = 'camera' | 'gallery' | 'demo';
+export type PickedImageSource = 'camera' | 'gallery' | 'example';
 
 export type PickedImage = {
   uri: string;
@@ -157,18 +159,26 @@ export async function pickImageFromGallery(): Promise<PickedImage | null> {
   return processAsset(result.assets[0], 'gallery');
 }
 
-export function demoPhotoToPickedImage(demo: {
-  id: string;
-  imageUrl: string;
-  label: string;
-}): PickedImage {
+/**
+ * Resolves a bundled Example Property Photo into a local file URI the app can
+ * preview and upload. The asset ships inside the app — nothing is fetched from
+ * a remote stock source at runtime.
+ */
+export async function examplePhotoToPickedImage(
+  photo: Pick<ExamplePropertyPhoto, 'id' | 'asset'>
+): Promise<PickedImage> {
+  const asset = Asset.fromModule(photo.asset);
+  if (!asset.localUri) {
+    await asset.downloadAsync();
+  }
+  const uri = asset.localUri ?? asset.uri;
   return {
-    uri: demo.imageUrl,
-    width: 0,
-    height: 0,
-    fileName: `${demo.id}.jpg`,
+    uri,
+    width: asset.width ?? 0,
+    height: asset.height ?? 0,
+    fileName: `${photo.id}.jpg`,
     mimeType: 'image/jpeg',
-    source: 'demo',
+    source: 'example',
   };
 }
 
@@ -178,8 +188,8 @@ export function formatSourceLabel(source: PickedImageSource): string {
       return 'Camera';
     case 'gallery':
       return 'Gallery';
-    case 'demo':
-      return 'Demo';
+    case 'example':
+      return 'Example photo';
   }
 }
 

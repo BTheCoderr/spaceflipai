@@ -42,7 +42,7 @@ export default function PlanDetailScreen() {
 
         <Pressable
           style={({ pressed }) => [styles.exportBtn, pressed && styles.pressed]}
-          onPress={() => Alert.alert('Export Plan', 'PDF export coming soon.')}
+          onPress={() => Alert.alert('Export Plan', 'Open a saved project to export a PDF plan.')}
         >
           <Text style={styles.exportBtnText}>Export Plan</Text>
         </Pressable>

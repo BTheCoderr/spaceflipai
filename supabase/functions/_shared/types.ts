@@ -17,6 +17,11 @@ export type GenerationJobRecord = {
   source: string | null;
   estimated_cost_cents: number | null;
   error_message: string | null;
+  concept_image_url?: string | null;
+  image_provider?: string | null;
+  image_generation_status?: string | null;
+  image_generation_error?: string | null;
+  estimated_image_cost_cents?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -66,5 +71,10 @@ export type GenerateUpgradePlanResponse = {
   aiProvider?: AiProvider;
   estimatedCostCents?: number;
   promptPreview?: string;
+  /** Phase 18 — AI concept image generation. */
+  conceptImageUrl?: string;
+  imageProvider?: string;
+  imageGenerationStatus?: string;
+  estimatedImageCostCents?: number;
   error?: string;
 };

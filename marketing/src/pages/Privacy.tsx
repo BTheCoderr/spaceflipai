@@ -46,10 +46,10 @@ export function PrivacyPage() {
           </li>
         </ul>
 
-        <h2>Information we do not collect in the MVP</h2>
+        <h2>Information we do not collect</h2>
         <ul>
           <li>No payment information</li>
-          <li>No active subscription data</li>
+          <li>No subscription data</li>
           <li>No advertising tracking for targeted ads</li>
           <li>We do not sell your personal data</li>
         </ul>
@@ -62,11 +62,14 @@ export function PrivacyPage() {
             operations
           </li>
           <li>
-            <strong>Groq</strong> — AI text generation for upgrade plans (and related fallbacks
-            managed server-side)
+            <strong>Google Gemini / Groq</strong> — AI text generation for upgrade plans, managed
+            server-side
           </li>
           <li>
             <strong>Expo / EAS</strong> — mobile app build and update infrastructure
+          </li>
+          <li>
+            <strong>Netlify</strong> — hosting for this marketing, support, privacy, and terms site
           </li>
         </ul>
         <p>
@@ -124,9 +127,9 @@ export function PrivacyPage() {
         <div className="notice" style={{ marginTop: '1.5rem' }}>
           <strong>Important disclaimer</strong>
           <p>
-            This policy is provided for MVP and App Store Connect preparation. It should be
-            reviewed and updated by legal counsel before public launch. The app stores uploaded
-            property photos and project data — we do not claim &quot;Data Not Collected.&quot;
+            This policy is provided for the current version and should be reviewed and updated by
+            legal counsel before public launch. The app stores uploaded property photos and project
+            data — we do not claim &quot;Data Not Collected.&quot;
           </p>
         </div>
       </div>

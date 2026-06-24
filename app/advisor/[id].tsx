@@ -23,10 +23,10 @@ export default function AdvisorDetailScreen() {
           <Pressable onPress={handleBack} hitSlop={interaction.hitSlop} style={styles.headerSide}>
             <Ionicons name="chevron-back" size={26} color={colors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>Advisor</Text>
+          <Text style={styles.headerTitle}>Guide</Text>
           <View style={styles.headerSide} />
         </View>
-        <Text style={styles.error}>Advisor not found.</Text>
+        <Text style={styles.error}>Guide not found.</Text>
       </SafeAreaView>
     );
   }
@@ -74,7 +74,7 @@ export default function AdvisorDetailScreen() {
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Starter questions</Text>
+        <Text style={styles.sectionTitle}>Plan prompts</Text>
         <View style={styles.card}>
           {advisor.starterQuestions.map((q, index) => (
             <Pressable
@@ -87,7 +87,7 @@ export default function AdvisorDetailScreen() {
               ]}
             >
               <Ionicons
-                name="chatbubble-ellipses-outline"
+                name="clipboard-outline"
                 size={16}
                 color={colors.accent}
                 style={styles.questionIcon}
@@ -99,12 +99,12 @@ export default function AdvisorDetailScreen() {
         </View>
 
         <View style={styles.noticeCard}>
-          <Ionicons name="flask-outline" size={18} color={colors.accent} />
+          <Ionicons name="bulb-outline" size={18} color={colors.accent} />
           <View style={styles.noticeBody}>
-            <Text style={styles.noticeTitle}>Advisor chat is in MVP testing</Text>
+            <Text style={styles.noticeTitle}>How this guide works</Text>
             <Text style={styles.noticeText}>
-              For full project output, generate a Visualize plan and export a PDF. Concept images
-              are planning references, not final renders.
+              Use this guide to start a focused upgrade plan. SpaceFlip Pro will create a budget,
+              checklist, and PDF-ready project plan from your property photo.
             </Text>
           </View>
         </View>

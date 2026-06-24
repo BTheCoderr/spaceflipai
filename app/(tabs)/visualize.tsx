@@ -17,7 +17,7 @@ export default function VisualizeScreen() {
         <Text style={styles.title}>Visualize</Text>
         <Text style={styles.hero}>Turn any space into a plan.</Text>
         <Text style={styles.subhero}>
-          Upload property photos and get visual concepts, budgets, and task lists for your business goals.
+          Upload a property photo and get an upgrade plan, budget, and task list for your business goals.
         </Text>
       </View>
 

@@ -8,9 +8,9 @@ import type { AiProvider, PlanSource, UpgradePlanPayload } from './upgradePlanPa
 
 export const EDGE_GENERATION_STEPS = [
   'Uploading property photo',
-  'Building planning prompt',
-  'Generating upgrade plan',
-  'Preparing concept reference',
+  'Building upgrade plan',
+  'Reviewing your property photo',
+  'Preparing budget and checklist',
   'Finalizing PDF-ready plan',
 ] as const;
 
@@ -28,6 +28,10 @@ export type UpgradeGenerationResult = {
   usedFallback: boolean;
   /** Internal, sanitized reason for the fallback (for logs/state, not raw provider errors). */
   fallbackReason?: string;
+  /** Image provider used ('none' when no real AI concept image was generated). */
+  imageProvider?: string;
+  /** True only when a real AI concept image was generated (badge: "AI Concept Reference"). */
+  conceptImageGenerated: boolean;
 };
 
 type EdgeFunctionPayload = {
@@ -39,6 +43,10 @@ type EdgeFunctionPayload = {
   aiProvider?: AiProvider;
   estimatedCostCents?: number;
   promptPreview?: string;
+  conceptImageUrl?: string;
+  imageProvider?: string;
+  imageGenerationStatus?: string;
+  estimatedImageCostCents?: number;
   error?: string;
 };
 
@@ -54,9 +62,11 @@ async function runLocalMockGeneration(
   options?: { usedFallback?: boolean; fallbackReason?: string }
 ): Promise<UpgradeGenerationResult> {
   await updateGenerationJobStatus(jobId, 'processing');
-  const job = await completeGenerationJobMock(jobId);
-  const resultImageUrl =
-    job.resultImageUrl ?? 'https://images.unsplash.com/photo-1618221197160-8070ed78f1c9?w=600';
+  // Never show a stock/mock image: use the user's original uploaded property photo.
+  const existing = await getGenerationJob(jobId);
+  const originalImageUrl = existing?.inputPublicUrl ?? existing?.inputImageUri ?? '';
+  const job = await completeGenerationJobMock(jobId, { resultImageUrl: originalImageUrl || undefined });
+  const resultImageUrl = originalImageUrl || job.resultImageUrl || '';
   return {
     resultImageUrl,
     planSource: 'mock',
@@ -64,6 +74,8 @@ async function runLocalMockGeneration(
     source: 'local',
     usedFallback: options?.usedFallback ?? false,
     fallbackReason: options?.fallbackReason,
+    imageProvider: 'none',
+    conceptImageGenerated: false,
   };
 }
 
@@ -87,7 +99,7 @@ async function runEdgeFunctionGeneration(
     }
   );
 
-  // MVP reliability: never block the user on AI failure — fall back to a local plan.
+  // Reliability: never block the user on AI failure — fall back to a local plan.
   if (error) {
     console.warn('[SpaceFlip Pro][AI] Edge function invoke failed, using fallback plan:', {
       name: error.name,
@@ -110,12 +122,16 @@ async function runEdgeFunctionGeneration(
     });
   }
 
+  const conceptImageGenerated = data.imageGenerationStatus === 'completed';
+
   if (__DEV__) {
     console.log('[SpaceFlip Pro][AI] Edge function success', {
       jobId,
       resultImageUrl: data.resultImageUrl,
       planSource: data.planSource ?? 'mock',
       aiProvider: data.aiProvider ?? 'mock',
+      imageProvider: data.imageProvider ?? 'mock',
+      imageGenerationStatus: data.imageGenerationStatus ?? 'not_started',
       promptPreview: data.promptPreview?.slice(0, 80),
     });
   }
@@ -133,6 +149,8 @@ async function runEdgeFunctionGeneration(
     // A completed job with mock plan source means the server used its own fallback.
     usedFallback: (data.planSource ?? 'mock') === 'mock',
     fallbackReason: (data.planSource ?? 'mock') === 'mock' ? 'server_mock_fallback' : undefined,
+    imageProvider: data.imageProvider ?? 'none',
+    conceptImageGenerated,
   };
 }
 

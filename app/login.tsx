@@ -60,7 +60,7 @@ export default function LoginScreen() {
           <Text style={styles.title}>Welcome to SpaceFlip Pro</Text>
           <Text style={styles.subtitle}>
             Continue as guest to create a private workspace so your projects can be saved securely.
-            Name and email are optional in this MVP — no password required.
+            Name and email are optional — no password required.
           </Text>
 
           <Text style={styles.label}>Name</Text>

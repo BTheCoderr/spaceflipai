@@ -46,6 +46,8 @@ export default function ResultScreen() {
     currentResultPayload,
     currentPlanSource,
     currentAiProvider,
+    currentImageProvider,
+    currentConceptImageGenerated,
     currentUsedFallback,
     currentJob,
     uploadedInputPublicUrl,
@@ -73,6 +75,8 @@ export default function ResultScreen() {
         currentResultPayload,
         currentPlanSource,
         currentAiProvider,
+        currentImageProvider,
+        currentConceptImageGenerated,
         currentJob,
         uploadedInputPublicUrl,
         selectedInputImage,
@@ -87,6 +91,8 @@ export default function ResultScreen() {
       currentResultPayload,
       currentPlanSource,
       currentAiProvider,
+      currentImageProvider,
+      currentConceptImageGenerated,
       currentJob,
       uploadedInputPublicUrl,
       selectedInputImage,
@@ -174,8 +180,7 @@ export default function ResultScreen() {
         <View style={styles.fallbackNote}>
           <Ionicons name="information-circle-outline" size={15} color={colors.textSecondary} />
           <Text style={styles.fallbackNoteText}>
-            AI generation was unavailable, so SpaceFlip Pro prepared a demo planning draft. You can
-            still review every tab and export a PDF.
+            Your plan was prepared from your project details. Review every tab and export a PDF.
           </Text>
         </View>
       ) : null}
@@ -196,28 +201,38 @@ export default function ResultScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {activeTab === 'visual' ? (
-          <>
-            <Text style={styles.compareLabel}>
-              {showBefore ? 'Original Property Photo' : 'Concept Reference'}
-            </Text>
-            {!showBefore ? (
-              <Text style={styles.compareSubLabel}>{panelCopy.visualSubtitle}</Text>
-            ) : null}
-            <View style={styles.imageArea}>
-              <RemoteImage uri={displayImageUrl} style={styles.image} containerStyle={styles.imageContainer} />
-              {inputUri ? (
-                <ResultActionBar
-                  showBefore={showBefore}
-                  onToggleBefore={() => setShowBefore((v) => !v)}
-                  onThumbsUp={() => Alert.alert('Thanks!', 'Feedback recorded (mock).')}
-                  onThumbsDown={() => Alert.alert('Feedback', 'We will refine this plan type (mock).')}
-                />
-              ) : null}
+          viewModel.displayVisualUrl ? (
+            <>
+              <Text style={styles.compareLabel}>
+                {viewModel.showConceptActions && showBefore
+                  ? 'Property Photo'
+                  : viewModel.displayVisualLabel}
+              </Text>
+              <Text style={styles.compareSubLabel}>{viewModel.displayVisualSubtitle}</Text>
+              <View style={styles.imageArea}>
+                <RemoteImage uri={displayImageUrl} style={styles.image} containerStyle={styles.imageContainer} />
+                {viewModel.showConceptActions && inputUri ? (
+                  <ResultActionBar
+                    showBefore={showBefore}
+                    onToggleBefore={() => setShowBefore((v) => !v)}
+                  />
+                ) : null}
+              </View>
+              <Text style={styles.conceptDisclaimer}>
+                {viewModel.hasRealConceptImage
+                  ? 'Generated plans are planning drafts. Final design, pricing, safety, permits, and construction decisions should be verified with qualified professionals.'
+                  : 'Review the Plan, Budget, and Checklist tabs and export a client-ready PDF.'}
+              </Text>
+            </>
+          ) : (
+            <View style={styles.emptyVisual}>
+              <Ionicons name="image-outline" size={40} color={colors.textSecondary} />
+              <Text style={styles.emptyVisualTitle}>No property photo available</Text>
+              <Text style={styles.emptyVisualText}>
+                Create a new plan with a property photo to include it in your PDF.
+              </Text>
             </View>
-            <Text style={styles.conceptDisclaimer}>
-              Planning reference only. Final design and pricing should be verified by professionals.
-            </Text>
-          </>
+          )
         ) : null}
 
         {activeTab === 'plan' ? (
@@ -246,7 +261,7 @@ export default function ResultScreen() {
             <Text style={styles.budgetValue}>{budgetRange}</Text>
             <Text style={styles.panelSubtitle}>{panelCopy.budgetSubtitle}</Text>
             <Text style={styles.panelBody}>
-              Mock estimate based on project type, goal, and visible scope. Final bids should come from licensed trades.
+              Estimated range based on project type, goal, and visible scope. Final bids should come from licensed trades.
             </Text>
             <Text style={styles.sectionHeading}>Suggested Materials / Items</Text>
             {viewModel.suggestedMaterials.map((item) => (
@@ -294,7 +309,7 @@ export default function ResultScreen() {
         </Pressable>
       </View>
 
-      {activeTab === 'visual' ? (
+      {activeTab === 'visual' && viewModel.showConceptActions ? (
         <Pressable
           style={({ pressed }) => [styles.regenerateBtn, pressed && styles.pressed]}
           onPress={handleRegenerate}
@@ -404,6 +419,27 @@ const styles = StyleSheet.create({
   },
   imageContainer: { minHeight: 280 },
   image: { minHeight: 280 },
+  emptyVisual: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    marginHorizontal: spacing.md,
+    minHeight: 240,
+  },
+  emptyVisualTitle: {
+    ...typography.heading,
+    fontSize: 15,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  emptyVisualText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
   panel: {
     marginHorizontal: spacing.md,
     backgroundColor: colors.surface,

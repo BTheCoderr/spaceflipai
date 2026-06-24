@@ -23,7 +23,7 @@ const EDGE_STATUS_LABELS = [
   'Uploading property photo…',
   'Building planning prompt…',
   'Generating upgrade plan…',
-  'Preparing concept reference…',
+  'Reviewing your property photo…',
   'Finalizing PDF-ready plan…',
 ] as const;
 
@@ -84,6 +84,8 @@ export default function GeneratingScreen() {
           planSource: result.planSource,
           aiProvider: result.aiProvider,
           usedFallback: result.usedFallback,
+          imageProvider: result.imageProvider,
+          conceptImageGenerated: result.conceptImageGenerated,
         });
 
         if (navigated.current) return;
@@ -109,11 +111,15 @@ export default function GeneratingScreen() {
         if (navigated.current) return;
         navigated.current = true;
 
-        await completeCurrentJobMock(
-          'https://images.unsplash.com/photo-1618221197160-8070ed78f1c9?w=600',
-          0,
-          { planSource: 'mock', aiProvider: 'mock', usedFallback: true }
-        );
+        // Never show a stock/mock image: fall back to the user's original photo.
+        const fallbackImage = previewUri ?? '';
+        await completeCurrentJobMock(fallbackImage, 0, {
+          planSource: 'mock',
+          aiProvider: 'mock',
+          usedFallback: true,
+          imageProvider: 'none',
+          conceptImageGenerated: false,
+        });
 
         router.replace({
           pathname: '/result',
@@ -122,7 +128,7 @@ export default function GeneratingScreen() {
             projectType: projectType ?? project?.id ?? '',
             projectTitle: displayTitle,
             goal: goal ?? '',
-            imageUrl: 'https://images.unsplash.com/photo-1618221197160-8070ed78f1c9?w=600',
+            imageUrl: fallbackImage,
             inputImageUrl: previewUri ?? '',
           },
         });
@@ -155,14 +161,15 @@ export default function GeneratingScreen() {
       return;
     }
 
-    // Local mock path: complete job after progress animation (unchanged behavior).
+    // Local path: complete job after progress animation using the original photo.
     try {
-      const resultUrl =
-        project?.resultImageUrls[0] ??
-        'https://images.unsplash.com/photo-1618221197160-8070ed78f1c9?w=600';
+      const resultUrl = previewUri ?? selectedInputImage?.uri ?? '';
 
-      const job = await completeGenerationJobMock(activeJobId!, { resultImageUrl: resultUrl });
-      await completeCurrentJobMock(job.resultImageUrl ?? resultUrl, 0);
+      const job = await completeGenerationJobMock(activeJobId!, { resultImageUrl: resultUrl || undefined });
+      await completeCurrentJobMock(job.resultImageUrl ?? resultUrl, 0, {
+        imageProvider: 'none',
+        conceptImageGenerated: false,
+      });
 
       if (navigated.current) return;
       navigated.current = true;

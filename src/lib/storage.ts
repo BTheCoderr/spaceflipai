@@ -229,18 +229,14 @@ function buildMockUploadResult(image: PickedImage, userId: string): UploadDesign
   };
 }
 
-/** Demo photos are remote URLs — never upload them to Supabase Storage. */
-function buildDemoUploadResult(image: PickedImage): UploadDesignInputResult {
+/** Legacy remote example URLs are passed through (never uploaded). */
+function buildRemoteExampleUploadResult(image: PickedImage): UploadDesignInputResult {
   const publicUrl = image.uri.startsWith('http') ? image.uri : DEFAULT_MOCK_URL;
 
-  logUploadDiag('Skipping upload for demo photo', {
+  logUploadDiag('Passing through remote example photo URL', {
     publicUrl,
     source: image.source,
   });
-
-  if (__DEV__) {
-    console.log('[SpaceFlip Pro][Storage] Skipping upload for demo photo');
-  }
 
   return {
     storagePath: '',
@@ -317,8 +313,10 @@ export async function uploadDesignInputImage(
     throw new StorageUploadError('No photo selected. Please choose an image first.', 'missing_image');
   }
 
-  if (image.source === 'demo') {
-    return buildDemoUploadResult(image);
+  // Bundled example photos are local files and are uploaded like any other
+  // photo. Only a legacy *remote* example URL is passed through untouched.
+  if (image.source === 'example' && isRemoteUri(image.uri)) {
+    return buildRemoteExampleUploadResult(image);
   }
 
   if (!hasSupabaseConfig()) {
@@ -358,7 +356,7 @@ export async function uploadRoomPhoto(
       width: 0,
       height: 0,
       mimeType: 'image/jpeg',
-      source: localUri.startsWith('http') ? 'demo' : 'gallery',
+      source: localUri.startsWith('http') ? 'example' : 'gallery',
     },
     userId
   );

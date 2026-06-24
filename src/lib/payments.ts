@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import type { SubscriptionPlan, UserProfile } from '../types/database';
 import { QUOTA_LIMITS } from '../types/database';
 
@@ -61,9 +60,9 @@ export function toUserProfile(status: SubscriptionStatus, id = 'mock-user'): Use
   };
 }
 
-/** Mock — replace with RevenueCat presentPaywall() or custom paywall route */
+/** No paywall is reachable in this build (no payments/subscriptions). */
 export function openPaywallMock(): void {
-  router.push('/paywall');
+  // Intentionally a no-op: there is no paywall route in the production build.
 }
 
 /** Mock — replace with RevenueCat purchasePackage() for weekly trial SKU */

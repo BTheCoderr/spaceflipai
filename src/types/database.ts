@@ -124,6 +124,7 @@ export const REGENERATE_POLICY = {
 } as const;
 
 export const QUOTA_LIMITS = {
-  freeTotal: 3,
-  proMonthly: 100,
+  // No paid plans in this build — generation is not gated behind a purchase.
+  freeTotal: 1000,
+  proMonthly: 1000,
 } as const;

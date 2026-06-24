@@ -7,7 +7,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
-import type { DemoPhoto } from '../data/mockDemoPhotos';
+import type { ExamplePropertyPhoto } from '../data/examplePropertyPhotos';
 import { getProjectTypeLabel, type ProjectTypeId } from '../data/mockProjectTypes';
 import { getUpgradePlanResult, type UpgradePlanResult } from '../data/mockUpgradeResults';
 import type { PickedImage, PickedImageSource } from './imagePicker';
@@ -74,7 +74,7 @@ type GenerationState = {
   selectedToolId?: string;
   selectedStyleId?: string;
   selectedInputImage?: PickedImage;
-  selectedDemoPhoto?: DemoPhoto;
+  selectedExamplePhoto?: ExamplePropertyPhoto;
   generationStatus: GenerationStatus;
   mockResultImageUrl?: string;
   mockResultIndex: number;
@@ -88,6 +88,8 @@ type GenerationState = {
   currentPlanSource?: PlanSource;
   currentAiProvider?: AiProvider;
   currentUsedFallback?: boolean;
+  currentImageProvider?: string;
+  currentConceptImageGenerated?: boolean;
   uploadedInputPublicUrl?: string;
   uploadedInputStoragePath?: string;
   generationError?: string;
@@ -112,7 +114,7 @@ type GenerationContextValue = GenerationState & {
     projectTitle?: string;
   }) => void;
   setSelectedTool: (toolId: string, toolName?: string) => void;
-  setSelectedInputImage: (image: PickedImage, demoPhoto?: DemoPhoto) => void;
+  setSelectedInputImage: (image: PickedImage, examplePhoto?: ExamplePropertyPhoto) => void;
   clearSelectedInputImage: () => void;
   uploadSelectedImage: () => Promise<UploadDesignInputResult>;
   createJobForSelectedImage: (input: CreateJobInput) => Promise<GenerationJob>;
@@ -130,6 +132,8 @@ type GenerationContextValue = GenerationState & {
       planSource?: PlanSource;
       aiProvider?: AiProvider;
       usedFallback?: boolean;
+      imageProvider?: string;
+      conceptImageGenerated?: boolean;
     }
   ) => Promise<void>;
   failCurrentJob: (message: string) => Promise<void>;
@@ -185,11 +189,11 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  const setSelectedInputImage = useCallback((image: PickedImage, demoPhoto?: DemoPhoto) => {
+  const setSelectedInputImage = useCallback((image: PickedImage, examplePhoto?: ExamplePropertyPhoto) => {
     setState((prev) => ({
       ...prev,
       selectedInputImage: image,
-      selectedDemoPhoto: demoPhoto,
+      selectedExamplePhoto: examplePhoto,
       uploadedInputPublicUrl: undefined,
       uploadedInputStoragePath: undefined,
       generationError: undefined,
@@ -200,7 +204,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({
       ...prev,
       selectedInputImage: undefined,
-      selectedDemoPhoto: undefined,
+      selectedExamplePhoto: undefined,
       uploadedInputPublicUrl: undefined,
       uploadedInputStoragePath: undefined,
     }));
@@ -214,29 +218,6 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
     const image = stateRef.current.selectedInputImage;
     if (!image) {
       throw new StorageUploadError('No photo selected. Please choose an image first.', 'missing_image');
-    }
-
-    if (image.source === 'demo') {
-      const upload: UploadDesignInputResult = {
-        storagePath: '',
-        publicUrl: image.uri,
-        width: image.width,
-        height: image.height,
-        mimeType: image.mimeType,
-        source: image.source,
-      };
-
-      if (__DEV__) {
-        console.log('[SpaceFlip Pro][Storage] Skipping upload for demo photo');
-      }
-
-      setState((prev) => ({
-        ...prev,
-        uploadedInputPublicUrl: upload.publicUrl,
-        uploadedInputStoragePath: undefined,
-        generationError: undefined,
-      }));
-      return upload;
     }
 
     try {
@@ -308,6 +289,8 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
           currentPlanSource: undefined,
           currentAiProvider: undefined,
           currentUsedFallback: undefined,
+          currentImageProvider: undefined,
+          currentConceptImageGenerated: undefined,
           selectedProjectTypeId: input.projectTypeId,
           selectedGoal: input.goal,
           selectedBudgetRange: input.budgetRange ?? prev.selectedBudgetRange,
@@ -359,6 +342,8 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         planSource?: PlanSource;
         aiProvider?: AiProvider;
         usedFallback?: boolean;
+        imageProvider?: string;
+        conceptImageGenerated?: boolean;
       }
     ) => {
       const jobId = stateRef.current.currentJobId;
@@ -372,6 +357,9 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
           currentPlanSource: options?.planSource ?? prev.currentPlanSource ?? 'mock',
           currentAiProvider: options?.aiProvider ?? prev.currentAiProvider ?? 'mock',
           currentUsedFallback: options?.usedFallback ?? prev.currentUsedFallback,
+          currentImageProvider: options?.imageProvider ?? prev.currentImageProvider ?? 'none',
+          currentConceptImageGenerated:
+            options?.conceptImageGenerated ?? prev.currentConceptImageGenerated ?? false,
         }));
         return;
       }
@@ -391,6 +379,9 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         currentPlanSource: options?.planSource ?? prev.currentPlanSource ?? 'mock',
         currentAiProvider: options?.aiProvider ?? prev.currentAiProvider ?? 'mock',
         currentUsedFallback: options?.usedFallback ?? prev.currentUsedFallback,
+        currentImageProvider: options?.imageProvider ?? prev.currentImageProvider ?? 'none',
+        currentConceptImageGenerated:
+          options?.conceptImageGenerated ?? prev.currentConceptImageGenerated ?? false,
         generationError: undefined,
       }));
     },
@@ -519,7 +510,7 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
         notes: current.selectedNotes ?? current.currentJob?.notes,
         inputImageUrl,
         resultImageUrl,
-        source: current.selectedInputImage?.source ?? current.currentJob?.source ?? 'demo',
+        source: current.selectedInputImage?.source ?? current.currentJob?.source ?? 'example',
         checklist:
           current.currentResultPayload?.priorityChecklist ??
           current.currentUpgradePlan?.priorityChecklist ??

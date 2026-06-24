@@ -11,7 +11,7 @@ Phase 5 tests **Storage upload only**. No auth, database, Edge Functions, or rea
 Supabase Dashboard → **Storage** → **New bucket**
 
 - **Name:** `design-inputs`
-- **Public:** ON for MVP testing
+- **Public:** ON (public read for property photos used in plans)
 
 ### B. Add `.env`
 

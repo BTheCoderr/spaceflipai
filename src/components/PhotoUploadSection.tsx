@@ -1,30 +1,30 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { DemoPhotoCarousel } from './DemoPhotoCarousel';
+import { ExamplePhotoCarousel } from './ExamplePhotoCarousel';
 import { RemoteImage } from './RemoteImage';
-import type { DemoPhoto } from '../data/mockDemoPhotos';
+import type { ExamplePropertyPhoto } from '../data/examplePropertyPhotos';
 import type { PickedImage } from '../lib/imagePicker';
 import { colors, interaction, radius, spacing, typography } from '../constants/theme';
 
 type Props = {
   uploadHint: string;
   selectedImage?: PickedImage;
-  demoPhotos: DemoPhoto[];
-  selectedDemoId?: string;
+  examplePhotos: ExamplePropertyPhoto[];
+  selectedExampleId?: string;
   onPickCamera: () => void;
   onPickGallery: () => void;
-  onSelectDemo: (photo: DemoPhoto) => void;
+  onSelectExample: (photo: ExamplePropertyPhoto) => void;
   picking?: boolean;
 };
 
 export function PhotoUploadSection({
   uploadHint,
   selectedImage,
-  demoPhotos,
-  selectedDemoId,
+  examplePhotos,
+  selectedExampleId,
   onPickCamera,
   onPickGallery,
-  onSelectDemo,
+  onSelectExample,
   picking,
 }: Props) {
   return (
@@ -42,16 +42,16 @@ export function PhotoUploadSection({
             {selectedImage.width > 0 && selectedImage.height > 0 ? (
               <Text style={styles.selectedMeta}>
                 {selectedImage.width} × {selectedImage.height}
-                {selectedImage.source === 'demo' ? ' · Demo' : ` · ${selectedImage.source === 'camera' ? 'Camera' : 'Gallery'}`}
+                {selectedImage.source === 'example' ? ' · Example' : ` · ${selectedImage.source === 'camera' ? 'Camera' : 'Gallery'}`}
               </Text>
             ) : (
-              <Text style={styles.selectedMeta}>Demo photo</Text>
+              <Text style={styles.selectedMeta}>Example photo</Text>
             )}
           </>
         ) : (
           <>
             <Ionicons name="cloud-upload-outline" size={36} color={colors.textSecondary} />
-            <Text style={styles.uploadPlaceholder}>Use camera, gallery, or a demo photo</Text>
+            <Text style={styles.uploadPlaceholder}>Use camera, gallery, or an example photo</Text>
           </>
         )}
         <View style={styles.uploadActions}>
@@ -74,11 +74,11 @@ export function PhotoUploadSection({
         </View>
       </View>
 
-      <Text style={styles.demoLabel}>Demo photos</Text>
-      <DemoPhotoCarousel
-        photos={demoPhotos}
-        selectedId={selectedDemoId}
-        onSelect={onSelectDemo}
+      <Text style={styles.demoLabel}>Example Property Photos</Text>
+      <ExamplePhotoCarousel
+        photos={examplePhotos}
+        selectedId={selectedExampleId}
+        onSelect={onSelectExample}
       />
     </>
   );

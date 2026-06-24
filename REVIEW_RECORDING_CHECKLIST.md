@@ -7,7 +7,7 @@ Apple asked for a screen recording that demonstrates the app's full functionalit
 - [ ] Use a **physical iPhone or iPad** (not the simulator — reviewers want a real device).
 - [ ] Update to the **latest available iOS / iPadOS**.
 - [ ] Build/run a real build (TestFlight build or `--go` Expo Go is fine for the demo video; a TestFlight build is best).
-- [ ] Make sure you have at least one photo in the Photo Library, or plan to use the in-app demo photo.
+- [ ] Make sure you have at least one photo in the Photo Library, or plan to use the in-app example photo.
 - [ ] Use a **fresh / test guest workspace** so the delete step at the end is safe.
 - [ ] Turn on screen recording (Control Center) and ensure there is **no personal info** visible.
 
@@ -39,7 +39,26 @@ Apple asked for a screen recording that demonstrates the app's full functionalit
 - [ ] Upload to a **public or unlisted** link that opens **without any login** (YouTube unlisted, Loom public, Google Drive "anyone with link", or a direct .mp4/.mov URL).
 - [ ] Paste that link into `APP_REVIEW_NOTES.md` and into App Store Connect's Guideline 2.1 reply.
 
+## App Store screenshots (the value story)
+
+Capture screenshots that show the app **in use and delivering value** — not onboarding,
+login, or splash screens. Use this order/caption story:
+
+1. **Upload a Property Photo** — intake screen with a property photo selected.
+2. **Create an AI Upgrade Plan** — Result → Plan tab (upgrade summary + contractor notes).
+3. **Review Budget and Materials** — Result → Budget tab (budget range + materials list).
+4. **Follow a Priority Checklist** — Result → Checklist tab.
+5. **Export a PDF Plan** — the generated PDF / share sheet.
+6. **Save Projects** — Projects tab with a saved project.
+7. **Use Project Guides** — Project Guides list (Airbnb, retail, office, exterior, contractor).
+
+Caption vocabulary to use: Property Photo, Upgrade Plan, AI-generated plan, Budget,
+Materials, Checklist, Project Guides, PDF Plan, Guest Workspace.
+
+Do **not** show: onboarding-only, login, splash, empty states, "Demo/Mock" anything, or any
+claim of photo-realistic renders / instant remodels / AI room makeovers.
+
 ## Tips
 
 - Keep it under ~3–4 minutes; narrate or add captions if helpful.
-- If AI generation falls back to a demo planning draft during recording, that's fine — it demonstrates the resilience and still shows every screen.
+- If AI text generation is briefly unavailable during recording, the app still produces an upgrade plan from your project details — that's fine and still shows every screen.

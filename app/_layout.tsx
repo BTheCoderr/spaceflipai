@@ -54,7 +54,6 @@ export default function RootLayout() {
         <Stack.Screen name="project/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="plan/[id]" options={{ presentation: 'card' }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="paywall" options={{ presentation: 'modal' }} />
         <Stack.Screen name="style-transfer" options={{ presentation: 'card' }} />
         <Stack.Screen name="style-detail" options={{ presentation: 'card' }} />
         <Stack.Screen name="tool/[toolId]" options={{ presentation: 'card' }} />

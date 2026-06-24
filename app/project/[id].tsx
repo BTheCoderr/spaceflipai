@@ -37,6 +37,7 @@ export default function ProjectDetailScreen() {
   const [project, setProject] = useState<DesignProject | null>(null);
   const [planSourceText, setPlanSourceText] = useState('Saved planning draft');
   const [providerText, setProviderText] = useState<string | undefined>(undefined);
+  const [conceptGenerated, setConceptGenerated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -60,6 +61,7 @@ export default function ProjectDetailScreen() {
                   ? job.aiProvider
                   : undefined;
               setProviderText(aiProviderDevLabel(provider));
+              setConceptGenerated(job.imageGenerationStatus === 'completed');
             }
           }
         })
@@ -88,12 +90,15 @@ export default function ProjectDetailScreen() {
         budgetRange: project.budgetRange ?? '',
         source: project.source,
         inputImageUrl: project.inputImageUrl || undefined,
-        resultImageUrl: project.resultImageUrl || undefined,
+        // Only embed a separate concept image when a real AI concept was generated.
+        // Otherwise the PDF shows the original property photo once.
+        resultImageUrl: conceptGenerated ? project.resultImageUrl || undefined : undefined,
         summary: project.planSummary,
         contractorNotes: project.contractorNotes,
         priorityChecklist: project.checklist,
         suggestedMaterials: project.budgetItems,
-        planSourcePdfLabel: 'Saved planning draft',
+        planSourcePdfLabel: 'Property upgrade plan',
+        resultImageLabel: 'AI Concept Reference',
       });
       if (!shared) {
         Alert.alert(
@@ -155,16 +160,22 @@ export default function ProjectDetailScreen() {
         <>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             <RemoteImage
-              uri={project.resultImageUrl}
+              uri={
+                conceptGenerated
+                  ? project.resultImageUrl
+                  : project.inputImageUrl || project.resultImageUrl
+              }
               style={styles.image}
               containerStyle={styles.imageWrap}
             />
             <View style={styles.conceptBadgeRow}>
-              <Text style={styles.conceptBadge}>Concept reference</Text>
+              <Text style={styles.conceptBadge}>
+                {conceptGenerated ? 'AI Concept Reference' : 'Property Photo'}
+              </Text>
             </View>
             <Text style={styles.conceptDisclaimer}>
-              Concept image is a planning reference. Final design and pricing should be verified by
-              professionals.
+              Generated plans are planning drafts. Final design, pricing, safety, permits, and
+              construction decisions should be verified with qualified professionals.
             </Text>
 
             <View style={styles.metaCard}>

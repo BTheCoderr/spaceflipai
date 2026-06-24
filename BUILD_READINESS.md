@@ -49,15 +49,15 @@ The Edge Function redacts secrets from logs and falls back to a mock plan if all
 
 ## How to test the full flow (on device)
 
-1. **Airbnb Unit** → pick a demo/gallery photo → Continue → Generating → Result. Expect `AI-generated plan` (provider `Groq` in dev label).
-2. **Backyard / Landscape** → same flow. If AI is unavailable, you should land on Result with a **Demo plan** and a subtle note ("We used a fallback plan…") — **no blocking alert**.
-3. **Result → Visual tab** shows **"Concept Reference"** (toggle: Original / Concept), with the planning-reference disclaimer.
-4. **Export Plan** → PDF labels the image "Concept Reference", includes the disclaimer, and prints the plan source.
+1. **Airbnb Unit** → pick an example/gallery photo → Continue → Generating → Result. Expect `AI-generated plan` (provider `Groq` in dev label).
+2. **Backyard / Landscape** → same flow. If AI is briefly unavailable, you still land on Result with an **Upgrade plan** built from your project details — **no blocking alert**, no "demo" wording.
+3. **Result → Visual tab** shows the **"Property Photo"** (the uploaded image) with the subtitle "Photo used to create this upgrade plan." No fake concept image, no before/after toggle while real image generation is off.
+4. **Export Plan** → PDF labels the image "Property Photo" and includes the planning disclaimer.
 5. **Save Project** → appears under **Saved Projects** in the Projects tab.
-6. **Saved Project → detail** → shows plan source/provider, concept disclaimer, working Export.
+6. **Saved Project → detail** → shows plan source/provider, "Property Photo" badge, planning disclaimer, working Export.
 7. **Delete Project** → confirmation dialog before deleting.
-8. **Advisors → tap an advisor** → preview-only screen (intro, example questions, "Start a Visualize Plan"). No fake chat.
-9. **Settings** → MVP testing notice; no free-trial / subscription language.
+8. **Project Guides → tap a guide** → guide screen (intro, plan prompts, "Start a Visualize Plan"). No chat.
+9. **Settings** → no free-trial / subscription language.
 
 ## Clearing Expo cache
 
@@ -112,24 +112,27 @@ npm run build:android:preview
 - A signed iOS build (EAS manages credentials), then `npx eas submit --platform ios` (do this manually — not automated here).
 
 ### Important caveats for this build
-- **Concept/visual images are mocked** — labeled "Concept Reference", not real AI renders.
-- **Payments are not active** — no RevenueCat, no subscriptions; the Paywall route is MVP-mode only and unlinked.
-- **Auth is not active** — projects use a demo user id.
+- **No AI concept/visual image generation** — the Visual tab and PDF show the user's own
+  uploaded **Property Photo**. There is no stock/mock/fake generated imagery.
+- **Payments are not active** — no RevenueCat, no subscriptions; there is no Paywall route in the app.
+- **Auth** uses anonymous Supabase guest sign-in (Guest Workspace), not a fixed demo user id.
 - Expo Go cannot show the custom icon/splash; use a dev/preview build to verify them.
 
-## What is still mocked
+## Not in this build (internal notes)
 
-- **Concept/visual image** (stock reference image, labeled "Concept Reference").
-- **Payments / subscription** (no RevenueCat, no paywall purchases; the Paywall route is MVP-mode only and not linked from the UI).
-- Advisor chat (preview-only, no live responses).
+- **Real AI concept image generation** is wired but OFF. The Visual tab shows the user's
+  uploaded **Property Photo**; no stock/mock concept image is shown.
+- **Payments / subscription**: none. No RevenueCat, no paywall purchases; the Paywall route
+  is removed from the navigation stack.
+- **Project Guides** route into the Visualize/intake flow; there is no chat.
 - Some legacy screens (style transfer, painting, tools) are not in the tab navigation.
 
 ## Known limitations
 
-- AI plan generation depends on network + provider quota; on failure the app shows a Demo/Fallback plan instead of an error.
-- No authentication yet — projects are stored under a demo user id.
-- Budget ranges and concept images are planning references, not quotes or final designs.
-- Real image generation, auth, and payments are intentionally deferred post-MVP.
+- AI plan generation depends on network + provider quota; on a brief provider hiccup the app
+  still produces an upgrade plan from the user's project details instead of erroring.
+- Guest workspaces are stored under an anonymous Supabase user id and can be deleted in Settings.
+- Budget ranges are planning estimates, not quotes or final designs.
 
 ## Pre-build checklist
 

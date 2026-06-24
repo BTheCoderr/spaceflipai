@@ -13,9 +13,9 @@ export default function AdvisorsScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.kicker}>SpaceFlip Pro</Text>
-        <Text style={styles.title}>Advisors</Text>
+        <Text style={styles.title}>Project Guides</Text>
         <Text style={styles.subtitle}>
-          Business-focused guidance for staging, layout, budget, and contractor handoff.
+          Choose a guide to start a plan for staging, layout, budget, and contractor handoff.
         </Text>
       </View>
 

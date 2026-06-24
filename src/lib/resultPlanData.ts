@@ -29,6 +29,8 @@ export type ResultPlanStoreSlice = {
   currentResultPayload?: UpgradePlanPayload;
   currentPlanSource?: PlanSource;
   currentAiProvider?: AiProvider;
+  currentImageProvider?: string;
+  currentConceptImageGenerated?: boolean;
   currentJob?: GenerationJob;
   uploadedInputPublicUrl?: string;
   selectedInputImage?: { uri: string; source: PickedImageSource };
@@ -58,6 +60,26 @@ export type ResultPlanViewModel = {
   planSourcePdfLabel: string;
   aiProvider?: AiProvider;
   aiProviderDevLabel?: string;
+  /** True only when a real AI concept image exists (status completed + URL). */
+  conceptImageGenerated: boolean;
+  /** True only when a real generated concept image URL is available to show. */
+  hasRealConceptImage: boolean;
+  /** The image to display: real concept when available, else the original photo. */
+  displayVisualUrl: string;
+  /** Visual label: "AI Concept Reference" when real, else "Property Photo". */
+  displayVisualLabel: string;
+  /** Visual subtitle explaining what the image is. */
+  displayVisualSubtitle: string;
+  /** Whether concept-specific actions (before/after, regenerate) should be shown. */
+  showConceptActions: boolean;
+  /** Backward-compatible alias for displayVisualUrl. */
+  visualImageUrl: string;
+  /** Backward-compatible alias for displayVisualLabel. */
+  visualImageLabel: string;
+  /** Result-screen badge (same as displayVisualLabel). */
+  conceptBadgeLabel: string;
+  /** PDF image label for a real concept image. */
+  conceptPdfLabel: string;
   resultUrls: string[];
 };
 
@@ -74,19 +96,6 @@ export function buildResultPlanViewModel(
     planFromStore ??
     getUpgradePlanResult(projectTypeId as ProjectTypeId, goal, store.selectedBudgetRange);
 
-  const resultUrls = plan.resultImageUrls ?? [
-    params.imageUrl ?? 'https://images.unsplash.com/photo-1618221197160-8070ed78f1c9?w=600',
-    'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600',
-    'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=600',
-  ];
-
-  const resultImageUrl =
-    store.mockResultImageUrl ??
-    store.currentJob?.resultImageUrl ??
-    resultUrls[store.mockResultIndex % resultUrls.length] ??
-    params.imageUrl ??
-    resultUrls[0];
-
   const inputUri =
     params.inputImageUrl ||
     store.uploadedInputPublicUrl ||
@@ -96,7 +105,31 @@ export function buildResultPlanViewModel(
     '';
 
   const source: PickedImageSource =
-    store.selectedInputImage?.source ?? store.currentJob?.source ?? 'demo';
+    store.selectedInputImage?.source ?? store.currentJob?.source ?? 'gallery';
+
+  const conceptImageGenerated = Boolean(
+    store.currentConceptImageGenerated ??
+      store.currentJob?.imageGenerationStatus === 'completed'
+  );
+
+  // A real AI concept image only exists when generation completed AND a URL is present.
+  // Otherwise we always fall back to the user's original property photo — never a stock image.
+  const realConceptUrl = conceptImageGenerated
+    ? store.currentJob?.conceptImageUrl ??
+      store.mockResultImageUrl ??
+      store.currentJob?.resultImageUrl ??
+      undefined
+    : undefined;
+  const hasRealConceptImage = Boolean(realConceptUrl);
+
+  const displayVisualUrl = hasRealConceptImage ? (realConceptUrl as string) : inputUri;
+  const displayVisualLabel = hasRealConceptImage ? 'AI Concept Reference' : 'Property Photo';
+  const displayVisualSubtitle = hasRealConceptImage
+    ? 'Generated from your property photo and upgrade goals.'
+    : 'Photo used to create this upgrade plan.';
+  const showConceptActions = hasRealConceptImage;
+  const resultImageUrl = displayVisualUrl;
+  const resultUrls = displayVisualUrl ? [displayVisualUrl] : [];
 
   const panelCopy = getResultPanelCopy(projectTypeId);
   const aiPayload = store.currentResultPayload ?? parseJobResultPayload(store.currentJob?.resultPayload);
@@ -136,6 +169,16 @@ export function buildResultPlanViewModel(
     planSourcePdfLabel: planSourcePdfLabel(planSource),
     aiProvider,
     aiProviderDevLabel: aiProviderDevLabel(aiProvider),
+    conceptImageGenerated,
+    hasRealConceptImage,
+    displayVisualUrl,
+    displayVisualLabel,
+    displayVisualSubtitle,
+    showConceptActions,
+    visualImageUrl: displayVisualUrl,
+    visualImageLabel: displayVisualLabel,
+    conceptBadgeLabel: displayVisualLabel,
+    conceptPdfLabel: 'AI Concept Reference',
     resultUrls: [...resultUrls],
   };
 }
@@ -169,5 +212,5 @@ export function getResultDisplayImageUrl(
   if (showBefore && viewModel.inputUri) {
     return viewModel.inputUri;
   }
-  return viewModel.resultImageUrl;
+  return viewModel.visualImageUrl;
 }

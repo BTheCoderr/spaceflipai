@@ -85,10 +85,11 @@ function parseJsonArray(value: unknown): string[] {
 }
 
 function parseSource(value: string | null | undefined): PickedImageSource {
-  if (value === 'camera' || value === 'gallery' || value === 'demo') {
+  if (value === 'camera' || value === 'gallery') {
     return value;
   }
-  return 'demo';
+  // Legacy rows stored example photos as 'demo'.
+  return 'example';
 }
 
 function rowToDesignProject(row: DesignProjectRow): DesignProject {

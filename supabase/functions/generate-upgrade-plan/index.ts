@@ -1,11 +1,126 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
-import { generateUpgradeImage, generateUpgradePlanText } from '../_shared/aiProvider.ts';
+import { generateUpgradePlanText } from '../_shared/aiProvider.ts';
 import { buildUpgradePrompt } from '../_shared/promptBuilder.ts';
+import { generateConceptImage, isImageGenerationEnabled } from '../_shared/imageProvider.ts';
 import type {
   GenerateUpgradePlanRequest,
   GenerateUpgradePlanResponse,
   GenerationJobRecord,
 } from '../_shared/types.ts';
+
+const DESIGN_INPUTS_BUCKET = 'design-inputs';
+
+function maxImagesPerUserPerDay(): number {
+  const raw = Number(Deno.env.get('MAX_IMAGE_GENERATIONS_PER_USER_PER_DAY') ?? '5');
+  return Number.isFinite(raw) && raw > 0 ? raw : 5;
+}
+
+type ConceptImageOutcome = {
+  resultImageUrl: string;
+  conceptImageUrl: string | null;
+  imageProvider: string;
+  imageGenerationStatus: string;
+  imageGenerationError: string | null;
+  estimatedImageCostCents: number;
+};
+
+/**
+ * Attempts real AI concept image generation when enabled. When disabled or on
+ * any failure, returns the user's ORIGINAL property photo as the visual — never
+ * a stock/mock image — with concept_image_url null.
+ */
+async function maybeGenerateConceptImage(
+  supabase: ReturnType<typeof createClient>,
+  record: GenerationJobRecord,
+  jobId: string,
+  originalImageUrl: string,
+  planSummary: string | null
+): Promise<ConceptImageOutcome> {
+  // Default (no real concept image): show the original property photo.
+  const fallback: ConceptImageOutcome = {
+    resultImageUrl: originalImageUrl,
+    conceptImageUrl: null,
+    imageProvider: 'none',
+    imageGenerationStatus: 'not_generated',
+    imageGenerationError: null,
+    estimatedImageCostCents: 0,
+  };
+
+  if (!isImageGenerationEnabled()) {
+    return { ...fallback, imageGenerationStatus: 'disabled' };
+  }
+
+  // Cost guard: cap real image generations per user per day.
+  try {
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    const { count } = await supabase
+      .from('generation_jobs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', record.user_id)
+      .eq('image_generation_status', 'completed')
+      .gte('created_at', since.toISOString());
+    if (typeof count === 'number' && count >= maxImagesPerUserPerDay()) {
+      console.warn('[generate-upgrade-plan] Image generation daily limit reached for user');
+      return { ...fallback, imageGenerationStatus: 'skipped_limit' };
+    }
+  } catch {
+    // If the guard query fails, proceed (single image per job is still bounded).
+  }
+
+  const inputImageUrl = record.input_public_url ?? record.input_image_uri ?? '';
+  const concept = await generateConceptImage({
+    projectType: record.project_type,
+    goal: record.goal,
+    budgetRange: record.budget_range,
+    notes: record.notes,
+    planSummary,
+    inputImageUrl,
+  });
+
+  if (concept.status === 'disabled') {
+    return { ...fallback, imageGenerationStatus: 'disabled' };
+  }
+
+  if (concept.status === 'failed') {
+    // Do not expose provider failure to the user. Keep the original photo as the
+    // visual and record the reason only in the internal debug column.
+    return {
+      ...fallback,
+      imageProvider: 'none',
+      imageGenerationStatus: 'failed',
+      imageGenerationError: concept.error,
+      estimatedImageCostCents: concept.costCents,
+    };
+  }
+
+  // Store the generated concept under users/{uid}/outputs/{jobId}/concept.png
+  const path = `users/${record.user_id}/outputs/${jobId}/concept.png`;
+  const { error: uploadError } = await supabase.storage
+    .from(DESIGN_INPUTS_BUCKET)
+    .upload(path, concept.bytes, { contentType: concept.contentType, upsert: true });
+
+  if (uploadError) {
+    console.warn('[generate-upgrade-plan] Concept image upload failed:', uploadError.message);
+    return {
+      ...fallback,
+      imageProvider: 'none',
+      imageGenerationStatus: 'failed',
+      imageGenerationError: 'storage_upload_failed',
+      estimatedImageCostCents: concept.costCents,
+    };
+  }
+
+  const { data: pub } = supabase.storage.from(DESIGN_INPUTS_BUCKET).getPublicUrl(path);
+  return {
+    resultImageUrl: pub.publicUrl,
+    conceptImageUrl: pub.publicUrl,
+    imageProvider: concept.provider,
+    imageGenerationStatus: 'completed',
+    imageGenerationError: null,
+    estimatedImageCostCents: concept.costCents,
+  };
+}
 
 const DEMO_USER_ID = 'demo-user';
 
@@ -134,21 +249,31 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const { resultImageUrl } = await generateUpgradeImage({
-      imageUrl: inputImageUrl,
-      prompt,
-      projectType: record.project_type,
-    });
+    // Real AI concept image only when enabled; otherwise the user's original
+    // property photo is used as the visual (never a stock/mock image).
+    const originalImageUrl = record.input_public_url ?? record.input_image_uri ?? inputImageUrl ?? '';
+    const image = await maybeGenerateConceptImage(
+      supabase,
+      record,
+      jobId,
+      originalImageUrl,
+      planResult.payload?.upgradeSummary ?? null
+    );
 
     const { error: completeError } = await supabase
       .from('generation_jobs')
       .update({
         status: 'completed',
-        result_image_url: resultImageUrl,
+        result_image_url: image.resultImageUrl,
         result_payload: planResult.payload,
         plan_source: planResult.source,
         ai_provider: planResult.provider,
         estimated_cost_cents: 0,
+        concept_image_url: image.conceptImageUrl,
+        image_provider: image.imageProvider,
+        image_generation_status: image.imageGenerationStatus,
+        image_generation_error: image.imageGenerationError,
+        estimated_image_cost_cents: image.estimatedImageCostCents,
         error_message: null,
       })
       .eq('id', jobId);
@@ -163,12 +288,16 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({
       ok: true,
       jobId,
-      resultImageUrl,
+      resultImageUrl: image.resultImageUrl,
       resultPayload: planResult.payload,
       planSource: planResult.source,
       aiProvider: planResult.provider,
       estimatedCostCents: 0,
       promptPreview,
+      conceptImageUrl: image.conceptImageUrl ?? undefined,
+      imageProvider: image.imageProvider,
+      imageGenerationStatus: image.imageGenerationStatus,
+      estimatedImageCostCents: image.estimatedImageCostCents,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Generation failed';

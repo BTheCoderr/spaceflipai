@@ -17,47 +17,76 @@ export class WorkspaceDeletionError extends Error {
 }
 
 /**
- * Removes every storage object under users/{userId}/inputs for the active user.
- * Returns true when a (possibly partial) failure occurred so the UI can warn.
+ * Recursively removes every storage object under users/{userId} for the active
+ * user — covering both inputs/... and outputs/{jobId}/concept.png. Returns true
+ * when a (possibly partial) failure occurred so the UI can warn.
  */
 async function deleteOwnStorageObjects(
   client: NonNullable<ReturnType<typeof getSupabaseClient>>,
   userId: string
 ): Promise<boolean> {
-  const prefix = `users/${userId}/inputs`;
-  let warned = false;
+  const result = { warned: false };
   try {
-    // Page through the folder so large workspaces are fully cleared.
-    // 100 per page is plenty for the MVP; loop guards against more.
-    for (let page = 0; page < 50; page += 1) {
-      const { data: files, error: listError } = await client.storage
-        .from(DESIGN_INPUTS_BUCKET)
-        .list(prefix, { limit: 100, offset: page * 100 });
+    await deleteStoragePrefix(client, `users/${userId}`, result, 0);
+  } catch {
+    result.warned = true;
+  }
+  return result.warned;
+}
 
-      if (listError) {
-        warned = true;
-        break;
-      }
-      if (!files || files.length === 0) {
-        break;
-      }
+async function deleteStoragePrefix(
+  client: NonNullable<ReturnType<typeof getSupabaseClient>>,
+  prefix: string,
+  result: { warned: boolean },
+  depth: number
+): Promise<void> {
+  // Guard against unexpectedly deep trees.
+  if (depth > 6) {
+    result.warned = true;
+    return;
+  }
 
-      const paths = files.map((file) => `${prefix}/${file.name}`);
-      const { error: removeError } = await client.storage
-        .from(DESIGN_INPUTS_BUCKET)
-        .remove(paths);
-      if (removeError) {
-        warned = true;
-      }
+  for (let page = 0; page < 50; page += 1) {
+    const { data: entries, error: listError } = await client.storage
+      .from(DESIGN_INPUTS_BUCKET)
+      .list(prefix, { limit: 100, offset: page * 100 });
 
-      if (files.length < 100) {
-        break;
+    if (listError) {
+      result.warned = true;
+      return;
+    }
+    if (!entries || entries.length === 0) {
+      return;
+    }
+
+    // Supabase returns folder placeholders with a null id; files have an id.
+    const filePaths: string[] = [];
+    const folders: string[] = [];
+    for (const entry of entries) {
+      if (entry.id) {
+        filePaths.push(`${prefix}/${entry.name}`);
+      } else {
+        folders.push(`${prefix}/${entry.name}`);
       }
     }
-  } catch {
-    warned = true;
+
+    if (filePaths.length > 0) {
+      const { error: removeError } = await client.storage
+        .from(DESIGN_INPUTS_BUCKET)
+        .remove(filePaths);
+      if (removeError) {
+        result.warned = true;
+      }
+    }
+
+    for (const folder of folders) {
+      await deleteStoragePrefix(client, folder, result, depth + 1);
+    }
+
+    if (entries.length < 100) {
+      return;
+    }
   }
-  return warned;
 }
 
 /**

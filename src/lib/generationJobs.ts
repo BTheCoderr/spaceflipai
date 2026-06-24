@@ -32,6 +32,9 @@ export type GenerationJob = {
   resultPayload?: Record<string, unknown>;
   planSource?: string;
   aiProvider?: string;
+  conceptImageUrl?: string;
+  imageProvider?: string;
+  imageGenerationStatus?: string;
 };
 
 export type GenerationJobError = {
@@ -62,6 +65,9 @@ type GenerationJobRow = {
   result_payload: Record<string, unknown> | null;
   plan_source: string | null;
   ai_provider: string | null;
+  concept_image_url?: string | null;
+  image_provider?: string | null;
+  image_generation_status?: string | null;
   error_message: string | null;
   created_at: string;
   updated_at: string;
@@ -85,10 +91,11 @@ function nowIso(): string {
 }
 
 function parseSource(value: string | null | undefined): PickedImageSource {
-  if (value === 'camera' || value === 'gallery' || value === 'demo') {
+  if (value === 'camera' || value === 'gallery') {
     return value;
   }
-  return 'demo';
+  // Legacy rows stored example photos as 'demo'.
+  return 'example';
 }
 
 function parseStatus(value: string): GenerationJobStatus {
@@ -127,6 +134,9 @@ function rowToGenerationJob(row: GenerationJobRow): GenerationJob {
     resultPayload: row.result_payload ?? undefined,
     planSource: row.plan_source ?? undefined,
     aiProvider: row.ai_provider ?? undefined,
+    conceptImageUrl: row.concept_image_url ?? undefined,
+    imageProvider: row.image_provider ?? undefined,
+    imageGenerationStatus: row.image_generation_status ?? undefined,
   };
 }
 
@@ -325,7 +335,7 @@ export async function updateGenerationJobStatus(
       toolId: '',
       inputImageUri: '',
       status: 'queued',
-      source: 'demo',
+      source: 'example',
       createdAt: timestamp,
       updatedAt: timestamp,
     }),

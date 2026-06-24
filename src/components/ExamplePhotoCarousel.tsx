@@ -1,16 +1,15 @@
-import { ScrollView, Pressable, Text, StyleSheet } from 'react-native';
-import { RemoteImage } from './RemoteImage';
+import { ScrollView, Pressable, Text, Image, StyleSheet } from 'react-native';
 import { layout } from '../constants/layout';
 import { colors, interaction, radius, spacing } from '../constants/theme';
-import type { DemoPhoto } from '../data/mockDemoPhotos';
+import type { ExamplePropertyPhoto } from '../data/examplePropertyPhotos';
 
 type Props = {
-  photos: DemoPhoto[];
+  photos: ExamplePropertyPhoto[];
   selectedId?: string;
-  onSelect: (photo: DemoPhoto) => void;
+  onSelect: (photo: ExamplePropertyPhoto) => void;
 };
 
-export function DemoPhotoCarousel({ photos, selectedId, onSelect }: Props) {
+export function ExamplePhotoCarousel({ photos, selectedId, onSelect }: Props) {
   return (
     <ScrollView
       horizontal
@@ -29,12 +28,7 @@ export function DemoPhotoCarousel({ photos, selectedId, onSelect }: Props) {
             ]}
             onPress={() => onSelect(photo)}
           >
-            <RemoteImage
-              uri={photo.imageUrl}
-              style={styles.image}
-              containerStyle={styles.imageWrap}
-              borderRadius={radius.md}
-            />
+            <Image source={photo.asset} style={styles.image} resizeMode="cover" />
             <Text style={styles.label} numberOfLines={1}>{photo.label}</Text>
           </Pressable>
         );
@@ -60,13 +54,10 @@ const styles = StyleSheet.create({
   cardSelected: {
     borderColor: colors.text,
   },
-  imageWrap: {
-    width: CARD_SIZE,
-    height: CARD_SIZE,
-  },
   image: {
     width: CARD_SIZE,
     height: CARD_SIZE,
+    borderRadius: radius.md,
   },
   label: {
     fontSize: 11,

@@ -37,7 +37,7 @@ const slides: Slide[] = [
   {
     icon: 'document-text-outline',
     title: 'Export and hand off',
-    body: 'Save projects and export a client-ready PDF. Concept images are planning references — not final renders. This is an MVP testing build with no payments.',
+    body: 'Save projects and export a client-ready PDF you can hand to clients, contractors, or your team.',
   },
 ];
 

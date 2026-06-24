@@ -17,8 +17,7 @@ export function ScreenshotMockups() {
       <div className="container">
         <h2 className="section-title">Inside the app</h2>
         <p className="section-lead">
-          App Store screenshots are coming soon. These frames show the core workflows SpaceFlip
-          Pro supports today.
+          These frames show the core workflows SpaceFlip Pro supports today.
         </p>
         <div className="mockup-grid">
           {mockups.map((mockup) => (
@@ -26,7 +25,7 @@ export function ScreenshotMockups() {
               <div className="phone-frame">
                 <div className="phone-notch" aria-hidden="true" />
                 <div className="phone-screen">
-                  <span className="phone-placeholder-label">Screenshot placeholder</span>
+                  <span className="phone-placeholder-label">App preview</span>
                   <strong>{mockup.title}</strong>
                   <p>{mockup.subtitle}</p>
                 </div>

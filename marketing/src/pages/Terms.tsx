@@ -6,7 +6,7 @@ export function TermsPage() {
   usePageMeta({
     title: 'Terms of Use',
     description:
-      'SpaceFlip Pro Terms of Use — MVP testing mode, planning drafts, concept references, and user responsibilities.',
+      'SpaceFlip Pro Terms of Use — planning drafts, no payments, and user responsibilities.',
     path: '/terms',
   });
 
@@ -22,17 +22,16 @@ export function TermsPage() {
           these Terms.
         </p>
 
-        <h2>MVP testing mode</h2>
+        <h2>Current version</h2>
         <p>
-          SpaceFlip Pro is currently offered in MVP testing mode. Features, availability, and
-          output quality may change. Payments and subscriptions are not active in the current
-          build.
+          Features, availability, and output quality may change as the app evolves. We aim to keep
+          the app honest and useful for practical property planning.
         </p>
 
         <h2>No payments or subscriptions</h2>
         <p>
-          The current MVP build does not process payments or manage active subscriptions. Any
-          future paid features will be disclosed separately before activation.
+          SpaceFlip Pro does not process payments or manage subscriptions. Any future paid features
+          will be disclosed separately before activation.
         </p>
 
         <h2>Planning drafts, not professional advice</h2>
@@ -43,10 +42,10 @@ export function TermsPage() {
           with qualified professionals before starting work.
         </p>
 
-        <h2>Concept images</h2>
+        <h2>Property photos</h2>
         <p>
-          Concept images shown in the app and exported PDFs are planning references only. They are
-          not final designs, guaranteed outcomes, or real AI renders of finished work.
+          The app shows your original property photo alongside the generated plan. Plans are
+          planning drafts and are not final designs, guaranteed outcomes, or construction documents.
         </p>
 
         <h2>Your content</h2>
@@ -59,8 +58,8 @@ export function TermsPage() {
         <h2>Service availability</h2>
         <p>
           We strive to keep SpaceFlip Pro available, but service may be interrupted, limited, or
-          changed without notice. AI generation may fall back to demo or fallback plans when a
-          provider or network issue occurs. Advisor chat is preview-only in the current MVP.
+          changed without notice. If a provider or network issue occurs, the app still prepares an
+          upgrade plan from your project details so you can review it and export a PDF.
         </p>
 
         <h2>Acceptable use</h2>
@@ -81,7 +80,7 @@ export function TermsPage() {
         <p>
           To the fullest extent permitted by law, {siteConfig.companyName} will not be liable for
           indirect, incidental, special, consequential, or punitive damages arising from your use
-          of the app or reliance on generated plans or concept references.
+          of the app or reliance on generated plans.
         </p>
 
         <h2>Changes</h2>
@@ -97,10 +96,10 @@ export function TermsPage() {
         </p>
 
         <div className="notice" style={{ marginTop: '1.5rem' }}>
-          <strong>Review before launch</strong>
+          <strong>Review note</strong>
           <p>
-            These Terms are provided for MVP and App Store Connect preparation and should be
-            reviewed by legal counsel before public launch.
+            These Terms are provided for the current version and should be reviewed by legal counsel
+            before public launch.
           </p>
         </div>
       </div>

@@ -2,21 +2,21 @@ import { Text, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native
 import { RemoteImage } from './RemoteImage';
 import { PhotoUploadSection } from './PhotoUploadSection';
 import { colors, interaction, radius, spacing, typography } from '../constants/theme';
-import type { DemoPhoto } from '../data/mockDemoPhotos';
+import type { ExamplePropertyPhoto } from '../data/examplePropertyPhotos';
 import type { DesignTool } from '../data/mockTools';
 import type { PickedImage } from '../lib/imagePicker';
 
 type Props = {
   tool: DesignTool;
   uploadHint: string;
-  demoPhotos: DemoPhoto[];
+  examplePhotos: ExamplePropertyPhoto[];
   selectedImage?: PickedImage;
-  selectedDemoId?: string;
+  selectedExampleId?: string;
   userPrompt: string;
   onPromptChange: (text: string) => void;
   onPickCamera: () => void;
   onPickGallery: () => void;
-  onSelectDemo: (photo: DemoPhoto) => void;
+  onSelectExample: (photo: ExamplePropertyPhoto) => void;
   onContinue: () => void;
   continuing?: boolean;
   picking?: boolean;
@@ -25,14 +25,14 @@ type Props = {
 export function ToolUploadScreen({
   tool,
   uploadHint,
-  demoPhotos,
+  examplePhotos,
   selectedImage,
-  selectedDemoId,
+  selectedExampleId,
   userPrompt,
   onPromptChange,
   onPickCamera,
   onPickGallery,
-  onSelectDemo,
+  onSelectExample,
   onContinue,
   continuing,
   picking,
@@ -65,11 +65,11 @@ export function ToolUploadScreen({
       <PhotoUploadSection
         uploadHint={uploadHint}
         selectedImage={selectedImage}
-        demoPhotos={demoPhotos}
-        selectedDemoId={selectedDemoId}
+        examplePhotos={examplePhotos}
+        selectedExampleId={selectedExampleId}
         onPickCamera={onPickCamera}
         onPickGallery={onPickGallery}
-        onSelectDemo={onSelectDemo}
+        onSelectExample={onSelectExample}
         picking={picking}
       />
 

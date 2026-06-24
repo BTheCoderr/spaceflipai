@@ -21,8 +21,9 @@ A user photographs (or selects) a property/space, chooses a project type and goa
 
 Important honesty notes for review:
 - Plans are **AI-generated planning drafts**, not professional construction documents.
-- "Concept" images are **planning references**, not photorealistic renders. The app does not perform real image generation in this build.
-- Advisors are **preview-only** (they route the user into the planning flow).
+- This build does **not** generate AI design/concept images. The Visual tab and the exported PDF show the user's **own original property photo**, labeled "Property Photo." There is **no mock, stock, or fake generated imagery** anywhere in the review build.
+- **Project Guides** (in the "Guides" tab) are not a chatbot. Each guide routes the user into the real Visualize/intake flow to generate a plan.
+- There are **no subscriptions, payments, or in-app purchases**, and no paywall is reachable.
 
 ## How to test the main features (guest mode — no login required)
 
@@ -30,24 +31,26 @@ Important honesty notes for review:
 2. Tap **Continue as guest**. This silently creates a private, anonymous Supabase workspace (no email/password required).
 3. Go to **Visualize** → pick a project type (e.g., "Airbnb / short-term rental").
 4. Fill in the goal/budget intake.
-5. **Select a photo** from the photo library, or use a built-in **demo photo**, or take one with the camera.
-6. Tap **Generate** → the app builds an upgrade plan.
-7. Review the **Visual**, **Plan**, **Budget**, and **Checklist** tabs.
+5. **Select a photo** from the photo library, or use a built-in **example photo**, or take one with the camera.
+6. Tap **Continue** → the app builds an upgrade plan.
+7. Review the **Visual** (your original property photo), **Plan**, **Budget**, and **Checklist** tabs.
 8. Tap **Save Project**.
 9. Open the saved project from the **Projects** tab → **Export PDF** (uses the iOS share sheet).
 10. Open **Settings** → review the account card → test **Log out** and/or **Delete guest workspace and data**.
 
-If AI generation is temporarily unavailable, the app shows a clearly labeled **demo planning draft** instead of failing, and all tabs + PDF export still work.
+If AI generation is temporarily unavailable, the app still prepares an upgrade plan from the user's project details (no failure screen), and all tabs + PDF export still work. The user's original property photo is always shown.
 
-## External services
+## External services (active in this build)
 
 - **Supabase Auth** — anonymous guest sessions (the user's workspace identity).
 - **Supabase Database (Postgres)** — stores generation jobs and saved projects (per-user via RLS).
 - **Supabase Storage** — stores uploaded property photos under `users/{userId}/inputs/`.
 - **Supabase Edge Functions** — server-side plan generation and workspace deletion.
-- **Groq AI** — generates the upgrade plan text.
+- **Google Gemini / Groq** — generate the upgrade plan **text** (server-side only).
 - **Expo / EAS** — app runtime and builds.
 - **Netlify** — hosts the marketing/support/legal website.
+
+No AI image-generation service is called in this build. (Image generation is not part of the review build and is not advertised in the app.)
 
 No advertising SDKs, no analytics tracking SDKs, no third-party login providers.
 

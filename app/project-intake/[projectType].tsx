@@ -19,11 +19,14 @@ import {
   projectGoals,
   type ProjectTypeId,
 } from '../../src/data/mockProjectTypes';
-import { getDemoPhotosForInputType, type DemoPhoto } from '../../src/data/mockDemoPhotos';
+import {
+  getExamplePropertyPhotos,
+  type ExamplePropertyPhoto,
+} from '../../src/data/examplePropertyPhotos';
 import { type GenerationJobError } from '../../src/lib/generationJobs';
 import { useGenerationStore } from '../../src/lib/generationStore';
 import {
-  demoPhotoToPickedImage,
+  examplePhotoToPickedImage,
   handleImagePickerError,
   pickImageFromCamera,
   pickImageFromGallery,
@@ -50,7 +53,7 @@ export default function ProjectIntakeScreen() {
   const [selectedGoal, setSelectedGoal] = useState<string>();
   const [selectedBudget, setSelectedBudget] = useState<string>();
   const [notes, setNotes] = useState('');
-  const [selectedDemoId, setSelectedDemoId] = useState<string>();
+  const [selectedExampleId, setSelectedExampleId] = useState<string>();
   const [continuing, setContinuing] = useState(false);
   const [picking, setPicking] = useState(false);
 
@@ -59,7 +62,7 @@ export default function ProjectIntakeScreen() {
     return projectGoals[projectType.id as ProjectTypeId] ?? [];
   }, [projectType]);
 
-  const demoPhotos = getDemoPhotosForInputType(
+  const examplePhotos = getExamplePropertyPhotos(
     projectType?.id.includes('landscape') || projectType?.id.includes('exterior')
       ? 'exterior'
       : projectType?.id.includes('office') || projectType?.id.includes('retail') || projectType?.id.includes('commercial')
@@ -76,9 +79,15 @@ export default function ProjectIntakeScreen() {
     );
   }
 
-  const handleSelectDemo = (photo: DemoPhoto) => {
-    setSelectedDemoId(photo.id);
-    setSelectedInputImage(demoPhotoToPickedImage(photo), photo);
+  const handleSelectExample = async (photo: ExamplePropertyPhoto) => {
+    setSelectedExampleId(photo.id);
+    try {
+      const picked = await examplePhotoToPickedImage(photo);
+      setSelectedInputImage(picked, photo);
+    } catch {
+      setSelectedExampleId(undefined);
+      Alert.alert('Photo error', 'We could not load that example photo. Please try another.');
+    }
   };
 
   const handlePickCamera = async () => {
@@ -86,7 +95,7 @@ export default function ProjectIntakeScreen() {
     try {
       const image = await pickImageFromCamera();
       if (image) {
-        setSelectedDemoId(undefined);
+        setSelectedExampleId(undefined);
         setSelectedInputImage(image);
       }
     } catch (error) {
@@ -101,7 +110,7 @@ export default function ProjectIntakeScreen() {
     try {
       const image = await pickImageFromGallery();
       if (image) {
-        setSelectedDemoId(undefined);
+        setSelectedExampleId(undefined);
         setSelectedInputImage(image);
       }
     } catch (error) {
@@ -158,10 +167,10 @@ export default function ProjectIntakeScreen() {
     } catch (e) {
       const jobErr = e as GenerationJobError;
       if (jobErr.code === 'quota_exceeded') {
-        Alert.alert('No plans left', 'Upgrade to Pro for more property upgrade plans.', [
-          { text: 'Upgrade', onPress: () => router.push('/paywall') },
-          { text: 'Cancel', style: 'cancel' },
-        ]);
+        Alert.alert(
+          'Please try again',
+          'We could not start this upgrade plan right now. Please try again in a moment.'
+        );
       } else if (jobErr.code === 'table_missing') {
         Alert.alert('Database setup needed', jobErr.message);
       } else if (e instanceof StorageUploadError || jobErr.message) {
@@ -206,13 +215,13 @@ export default function ProjectIntakeScreen() {
         </View>
 
         <PhotoUploadSection
-          uploadHint="Upload property photos or choose a demo image"
+          uploadHint="Upload a property photo or choose an example photo"
           selectedImage={selectedInputImage}
-          demoPhotos={demoPhotos}
-          selectedDemoId={selectedDemoId}
+          examplePhotos={examplePhotos}
+          selectedExampleId={selectedExampleId}
           onPickCamera={handlePickCamera}
           onPickGallery={handlePickGallery}
-          onSelectDemo={handleSelectDemo}
+          onSelectExample={handleSelectExample}
           picking={picking}
         />
 

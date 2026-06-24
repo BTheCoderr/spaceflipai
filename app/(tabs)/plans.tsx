@@ -39,7 +39,7 @@ export default function PlansScreen() {
                   <View style={styles.planFooter}>
                     <Text style={styles.checklistCount}>{plan.checklistCount} checklist items</Text>
                     <Pressable
-                      onPress={() => Alert.alert('Export Plan', 'PDF export coming soon.')}
+                      onPress={() => Alert.alert('Export Plan', 'Open a saved project to export a PDF plan.')}
                       style={({ pressed }) => [styles.exportBtn, pressed && styles.pressed]}
                     >
                       <Text style={styles.exportText}>Export</Text>

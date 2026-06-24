@@ -152,7 +152,7 @@ export const advisorAgents: AdvisorAgent[] = [
     subtitle: 'Scope & handoff planner',
     icon: 'construct-outline',
     focus:
-      'Turns visual concepts into contractor-friendly scope notes, material intent, and bid-ready checklists.',
+      'Turns upgrade ideas into contractor-friendly scope notes, material intent, and bid-ready checklists.',
     systemPrompt:
       'You are a contractor brief advisor for SpaceFlip Pro. Convert upgrade ideas into clear scope notes, trade sequencing, material intent, and questions to ask before hiring. Keep bids comparable.',
     starterQuestions: [

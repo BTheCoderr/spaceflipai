@@ -44,19 +44,11 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="plans"
-        options={{
-          title: 'Plans',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="document-text-outline" size={size} color={color} />
-          ),
-        }}
-      />
+      <Tabs.Screen name="plans" options={{ href: null }} />
       <Tabs.Screen
         name="advisors"
         options={{
-          title: 'Advisors',
+          title: 'Guides',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),

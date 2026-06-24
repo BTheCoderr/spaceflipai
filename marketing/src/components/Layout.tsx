@@ -49,7 +49,7 @@ export function Layout() {
           <div className="footer-about">
             <p className="footer-brand">{siteConfig.name}</p>
             <p className="footer-note">{siteConfig.tagline}</p>
-            <p className="footer-note">MVP testing mode — payments are not active.</p>
+            <p className="footer-note">No subscriptions or payments.</p>
             <a className="footer-email" href={mailto()}>
               {siteConfig.supportEmail}
             </a>
@@ -65,8 +65,8 @@ export function Layout() {
         </div>
         <div className="container footer-bottom">
           <p>
-            © {new Date().getFullYear()} {siteConfig.companyName}. Concept images are planning
-            references. Verify pricing, permits, and safety with qualified professionals.
+            © {new Date().getFullYear()} {siteConfig.companyName}. Generated plans are planning
+            drafts. Verify pricing, permits, and safety with qualified professionals.
           </p>
         </div>
       </footer>

@@ -3,9 +3,9 @@ import { mailto, siteConfig } from '../config/site';
 
 const trustItems = [
   'No account or password required — start in a private guest workspace.',
-  'No subscription is active in the MVP build.',
-  'Concept images are planning references, not final renders.',
-  'AI generation may fall back to demo plans if a provider or network issue occurs.',
+  'No subscriptions or payments.',
+  'Your original property photo is shown alongside the generated plan.',
+  'Plans are AI-assisted planning drafts to verify with qualified professionals.',
   'Delete your guest workspace and data anytime in the app (Settings) or via the Delete Data page.',
   `Support is available at ${siteConfig.supportEmail}.`,
 ];
@@ -16,7 +16,7 @@ export function TrustSection() {
       <div className="container">
         <h2 className="section-title">Transparency</h2>
         <p className="section-lead">
-          SpaceFlip Pro is in MVP testing. We prefer honest product copy over hype.
+          We prefer honest product copy over hype.
         </p>
         <ul className="trust-list">
           {trustItems.map((item) => (

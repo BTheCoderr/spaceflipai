@@ -5,7 +5,7 @@ const pdfItems = [
   'Suggested materials',
   'Priority checklist',
   'Contractor / client notes',
-  'Concept reference disclaimer (planning reference, not a final render)',
+  'Planning-draft disclaimer (verify with qualified professionals)',
 ];
 
 export function PdfValueSection() {
@@ -15,20 +15,16 @@ export function PdfValueSection() {
         <div className="pdf-copy">
           <h2 className="section-title">Export a client-ready upgrade plan</h2>
           <p className="section-lead">
-            Share a structured PDF with clients, contractors, or stakeholders. Every export labels
-            concept images as planning references.
+            Share a structured PDF with clients, contractors, or stakeholders. Every export
+            includes a clear planning-draft disclaimer.
           </p>
           <ul className="pdf-list">
             {pdfItems.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
-          <button type="button" className="btn btn-secondary btn-disabled" disabled>
-            Sample report coming soon
-          </button>
           <p className="pdf-note">
-            A downloadable sample PDF will be added before public launch. Exports in the app
-            include the sections listed above.
+            Exports are generated in the app and include the sections listed above.
           </p>
         </div>
         <div className="pdf-preview card">
@@ -46,7 +42,7 @@ export function PdfValueSection() {
               <span>Checklist</span>
             </div>
             <p className="pdf-preview-disclaimer">
-              Concept reference — planning only. Verify pricing and design with professionals.
+              Planning draft — verify pricing and design with qualified professionals.
             </p>
           </div>
         </div>

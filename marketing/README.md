@@ -106,13 +106,11 @@ Edit `src/config/site.ts`:
 | `appStoreLive` | Set `true` when the app is live to enable the download button |
 | `effectiveDate` | Privacy/Terms effective date |
 
-## MVP disclaimers (included on site)
+## Disclaimers (included on site)
 
-- Concept images are planning references, not final renders.
 - AI plans are planning drafts — verify pricing, permits, safety, and code with professionals.
-- Payments are not active in the current MVP build.
-- Advisor chat is preview-only.
-- AI generation may fall back to demo plans if provider/network is unavailable.
+- The app shows your original property photo alongside the generated plan.
+- No subscriptions, payments, or in-app purchases.
 - No free trial, unlimited, or subscription claims.
 
 ## TypeScript

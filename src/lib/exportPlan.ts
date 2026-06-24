@@ -30,6 +30,8 @@ export type ExportPlanInput = {
   photoPrepTips: string[];
   generatedAt: string;
   planSourcePdfLabel: string;
+  /** PDF label for a real AI concept image (only used when resultImageUrl is set). */
+  resultImageLabel?: string;
 };
 
 export type ExportPlanResult = {
@@ -45,10 +47,10 @@ export class ExportPlanError extends Error {
 }
 
 const DISCLAIMER =
-  'Estimates are planning references only. Final pricing should come from licensed professionals.';
+  'Generated plans are planning drafts. Final design, pricing, safety, permits, and construction decisions should be verified with qualified professionals.';
 
 const CONCEPT_IMAGE_DISCLAIMER =
-  'Concept image is a planning reference. Final design and pricing should be verified by professionals.';
+  'Generated plans are planning drafts. Final design, pricing, safety, permits, and construction decisions should be verified with qualified professionals.';
 
 const DEFAULT_CHECKLIST = [
   'Confirm scope and photo priorities',
@@ -160,7 +162,9 @@ export function exportPlanInputFromViewModel(viewModel: ResultPlanViewModel): Ex
     source: viewModel.source,
     sourceLabel: viewModel.sourceLabel,
     inputImageUrl: viewModel.inputUri || undefined,
-    resultImageUrl: viewModel.resultImageUrl || undefined,
+    // Only embed a second "concept" image when a real AI concept image exists.
+    // Otherwise the PDF shows the original property photo once (as "Original Property Photo").
+    resultImageUrl: viewModel.hasRealConceptImage ? viewModel.visualImageUrl || undefined : undefined,
     summary: viewModel.summary,
     businessOutcome: viewModel.businessOutcome,
     contractorNotes: viewModel.contractorNotes,
@@ -170,6 +174,7 @@ export function exportPlanInputFromViewModel(viewModel: ResultPlanViewModel): Ex
     photoPrepTips: viewModel.photoPrepTips,
     generatedAt: new Date().toISOString(),
     planSourcePdfLabel: viewModel.planSourcePdfLabel,
+    resultImageLabel: viewModel.conceptPdfLabel,
   };
 }
 
@@ -185,7 +190,7 @@ export function normalizeExportPlanInput(
   const goal = partial.goal?.trim() || 'Improve this property';
   const plan = getUpgradePlanResult(projectTypeId, goal, partial.budgetRange);
   const panelCopy = getResultPanelCopy(projectTypeId);
-  const source: PickedImageSource = partial.source ?? 'demo';
+  const source: PickedImageSource = partial.source ?? 'example';
 
   return {
     projectTypeLabel,
@@ -212,7 +217,8 @@ export function normalizeExportPlanInput(
     riskNotes: partial.riskNotes ?? [],
     photoPrepTips: partial.photoPrepTips ?? [],
     generatedAt: partial.generatedAt ?? new Date().toISOString(),
-    planSourcePdfLabel: partial.planSourcePdfLabel ?? 'Demo planning template',
+    planSourcePdfLabel: partial.planSourcePdfLabel ?? 'Property upgrade plan',
+    resultImageLabel: partial.resultImageLabel ?? 'AI Concept Reference',
   };
 }
 
@@ -239,8 +245,11 @@ async function preparePlanForPdf(projectResult: ExportPlanInput): Promise<Prepar
  * Builds HTML for a client-ready SpaceFlip Pro upgrade plan PDF.
  */
 export function buildPlanHtml(prepared: PreparedExportPlan): string {
-  const inputBlock = renderImageBlock('Original Property Photo', prepared.resolvedInputImage);
-  const resultBlock = renderImageBlock('Concept Reference', prepared.resolvedResultImage);
+  const inputBlock = renderImageBlock('Property Photo', prepared.resolvedInputImage);
+  const resultBlock = renderImageBlock(
+    prepared.resultImageLabel ?? 'AI Concept Reference',
+    prepared.resolvedResultImage
+  );
   const photosSection =
     inputBlock || resultBlock
       ? `<h2>Property Photos</h2><div class="images">${inputBlock}${resultBlock}</div><p class="concept-note">${escapeHtml(
