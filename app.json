@@ -17,7 +17,7 @@
       "icon": "./assets/icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.spaceflip.pro",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "NSCameraUsageDescription": "SpaceFlip Pro needs camera access so you can take a property or space photo for an upgrade plan.",
         "NSPhotoLibraryUsageDescription": "SpaceFlip Pro needs photo library access so you can select a property or space photo to create an upgrade plan.",
