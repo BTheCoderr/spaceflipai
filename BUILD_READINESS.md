@@ -136,9 +136,14 @@ npm run build:android:preview
 
 ## Production backend privacy
 
+For a **new** SpaceFlip Supabase project, run `SUPABASE_FRESH_PROJECT_SETUP.sql`. It creates the current schema, private `design-inputs` bucket, authenticated guest ownership, and owner-only RLS without ever enabling the legacy `demo-user` policies.
+
+The older `SUPABASE_DATABASE_SETUP.sql` / `SUPABASE_AUTH_MIGRATION.sql` / `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` sequence is retained only for upgrading an existing legacy SpaceFlip database.
+
 Before TestFlight/public beta on the live backend:
 
-- Apply `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` so `design-inputs` is private.
+- For a fresh project, apply `SUPABASE_FRESH_PROJECT_SETUP.sql`.
+- Enable Supabase Anonymous Sign-Ins for guest workspaces.
 - Deploy both Edge Functions with JWT verification enabled.
 - Verify anonymous guest auth, owner-scoped RLS, signed image display, PDF export, and workspace deletion against the live SpaceFlip Supabase project.
 
@@ -146,11 +151,12 @@ The app stores stable SpaceFlip Storage references and resolves them to short-li
 
 ## Pre-build checklist
 
-- [ ] GitHub `SpaceFlip CI` passes (`npm run typecheck`, Expo compatibility, both Deno Edge Functions)
+- [ ] GitHub `SpaceFlip CI` passes (TypeScript, Expo checks, critical dependency gate, both Deno Edge Functions)
+- [ ] Review the non-blocking high-severity npm audit report; do not use `npm audit fix --force` to jump Expo SDKs automatically
 - [ ] Root `.env` contains only `EXPO_PUBLIC_*` values
 - [ ] `supabase/.env.local` is gitignored and not tracked
 - [ ] Correct SpaceFlip Supabase project is connected and reachable
-- [ ] `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` applied to the live project
+- [ ] Fresh backend created with `SUPABASE_FRESH_PROJECT_SETUP.sql` (or legacy migrations applied only when upgrading an old SpaceFlip DB)
 - [ ] Both Edge Functions deployed with JWT verification enabled
 - [ ] Supabase secrets set for the target project
 - [ ] App reloaded with `-c` so the device runs the latest bundle
