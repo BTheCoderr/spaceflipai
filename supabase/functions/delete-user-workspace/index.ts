@@ -14,7 +14,7 @@
 //   * Only ever touches rows/objects owned by that uid.
 //   * Never logs tokens, keys, or auth headers.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 const FUNCTION_VERSION = 'phase18-delete-workspace-v2';
 const DESIGN_INPUTS_BUCKET = 'design-inputs';
@@ -39,7 +39,7 @@ function jsonResponse(body: DeleteResponse, status = 200): Response {
 }
 
 async function getAuthenticatedUserId(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   authHeader: string | null
 ): Promise<string | null> {
   if (!authHeader) return null;
@@ -57,7 +57,7 @@ async function getAuthenticatedUserId(
 // Recursively deletes everything under users/{uid} — both inputs/... and
 // outputs/{jobId}/concept.png.
 async function deleteStoragePrefix(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   prefix: string,
   result: { warned: boolean },
   depth: number
@@ -104,7 +104,7 @@ async function deleteStoragePrefix(
 }
 
 async function deleteOwnStorage(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   userId: string
 ): Promise<boolean> {
   const result = { warned: false };
