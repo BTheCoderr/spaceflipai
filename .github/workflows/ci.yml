@@ -26,6 +26,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Align Expo SDK 54 patch dependencies
+        run: |
+          npm install expo@~54.0.37 expo-constants@~18.0.14 expo-file-system@~19.0.24 --save
+          git diff -- package.json package-lock.json
+
       - name: TypeScript
         run: npm run typecheck
 
