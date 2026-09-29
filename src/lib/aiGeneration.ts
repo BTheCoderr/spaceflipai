@@ -89,13 +89,13 @@ async function runEdgeFunctionGeneration(
   }
 
   if (__DEV__) {
-    console.log('[SpaceFlip Pro][AI] Invoking generate-upgrade-plan', { jobId, userId });
+    console.log('[SpaceFlip Pro][AI] Invoking generate-upgrade-plan', { jobId });
   }
 
   const { data, error } = await client.functions.invoke<EdgeFunctionPayload>(
     'generate-upgrade-plan',
     {
-      body: { jobId, userId },
+      body: { jobId },
     }
   );
 
