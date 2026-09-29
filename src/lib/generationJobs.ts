@@ -1,4 +1,5 @@
 import { getProjectTypeById } from '../data/mockProjectTypes';
+import type { TablesUpdate } from '../types/supabase.generated';
 import type { PickedImageSource } from './imagePicker';
 import { DB_TABLE_MISSING_MESSAGE, logDbWarning, mapSupabaseDbError } from './dbErrors';
 import { canUseGeneration, consumeGenerationQuota } from './payments';
@@ -288,7 +289,7 @@ async function updateGenerationJobSupabase(
     return null;
   }
 
-  const updateRow: Record<string, string | null> = {
+  const updateRow: TablesUpdate<'generation_jobs'> = {
     status,
   };
 
