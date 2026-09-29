@@ -4,4 +4,7 @@
 # Set after: supabase link --project-ref YOUR_REF
 
 [functions.generate-upgrade-plan]
-verify_jwt = false
+verify_jwt = true
+
+[functions.delete-user-workspace]
+verify_jwt = true

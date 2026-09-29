@@ -8,7 +8,7 @@
 //   - No stock/mock concept image: when image generation is OFF (default) or fails,
 //     result_image_url = the user's ORIGINAL property photo and concept_image_url = null
 //   - Never fails the user flow on AI errors — always completes the job
-//   - verify_jwt=false compatible (app invokes with anon key)
+//   - Requires a valid Supabase user JWT (anonymous guest sessions are supported)
 // =============================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
@@ -72,7 +72,6 @@ type GenerateUpgradePlanTextResult = {
 
 type GenerateUpgradePlanRequest = {
   jobId: string;
-  userId?: string;
 };
 
 type GenerateUpgradePlanResponse = {
@@ -891,7 +890,6 @@ async function maybeGenerateConceptImage(
   };
 }
 
-const DEMO_USER_ID = 'demo-user';
 const FUNCTION_VERSION = 'phase19-no-mock-image-v1';
 
 const corsHeaders = {

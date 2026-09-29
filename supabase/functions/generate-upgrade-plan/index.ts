@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { generateUpgradePlanText } from '../_shared/aiProvider.ts';
 import { buildUpgradePrompt } from '../_shared/promptBuilder.ts';
 import { generateConceptImage, isImageGenerationEnabled } from '../_shared/imageProvider.ts';
@@ -30,7 +30,7 @@ type ConceptImageOutcome = {
  * a stock/mock image — with concept_image_url null.
  */
 async function maybeGenerateConceptImage(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   record: GenerationJobRecord,
   jobId: string,
   originalImageUrl: string,
@@ -122,7 +122,6 @@ async function maybeGenerateConceptImage(
   };
 }
 
-const DEMO_USER_ID = 'demo-user';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -144,7 +143,7 @@ function jsonResponse(body: GenerateUpgradePlanResponse, status = 200): Response
  * Returns null for anon-key requests or invalid tokens. Never logs the token.
  */
 async function getAuthenticatedUserId(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   authHeader: string | null
 ): Promise<string | null> {
   if (!authHeader) return null;
@@ -184,13 +183,20 @@ Deno.serve(async (req: Request) => {
   }
 
   const jobId = body.jobId?.trim();
-  const userId = body.userId?.trim() || DEMO_USER_ID;
 
   if (!jobId) {
     return jsonResponse({ ok: false, error: 'jobId is required' }, 400);
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  // This endpoint is only for signed-in app users, including anonymous guest
+  // accounts. Never trust a client-supplied ownership id when using a
+  // service-role client that bypasses RLS.
+  const authUserId = await getAuthenticatedUserId(supabase, req.headers.get('Authorization'));
+  if (!authUserId) {
+    return jsonResponse({ ok: false, error: 'Not authenticated' }, 401);
+  }
 
   const { data: job, error: fetchError } = await supabase
     .from('generation_jobs')
@@ -209,12 +215,7 @@ Deno.serve(async (req: Request) => {
 
   const record = job as GenerationJobRecord;
 
-  // Prefer the verified JWT user id over any client-provided body userId.
-  const authUserId = await getAuthenticatedUserId(supabase, req.headers.get('Authorization'));
-  const effectiveUserId = authUserId ?? userId;
-  console.log('[generate-upgrade-plan] auth resolved:', authUserId ? 'jwt' : 'fallback-body');
-
-  if (record.user_id !== effectiveUserId) {
+  if (record.user_id !== authUserId) {
     return jsonResponse({ ok: false, error: 'User does not match job' }, 403);
   }
 

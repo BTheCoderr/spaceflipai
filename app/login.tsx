@@ -29,13 +29,14 @@ export default function LoginScreen() {
     setSubmitting(true);
     try {
       const { backendReady } = await signInLocal({ name, email, guest });
-      // Anonymous sign-in is invisible to the user. If it fails (e.g. provider
-      // disabled), let them in but be honest that saving may be limited.
+      // Anonymous sign-in is invisible to the user, but a configured production
+      // build must have a real workspace before we enter the app.
       if (!backendReady && hasSupabaseConfig()) {
         Alert.alert(
-          'Limited mode',
-          "We couldn't start your secure workspace right now. You can keep exploring, but saving projects may not work until you reconnect."
+          'Secure workspace unavailable',
+          "We couldn't start your private workspace. Check your connection and try again."
         );
+        return;
       }
       router.replace('/(tabs)/projects');
     } finally {

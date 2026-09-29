@@ -59,7 +59,6 @@ export type GenerateUpgradePlanTextResult = {
 
 export type GenerateUpgradePlanRequest = {
   jobId: string;
-  userId?: string;
 };
 
 export type GenerateUpgradePlanResponse = {
