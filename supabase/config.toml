@@ -3,6 +3,9 @@
 [project]
 # Set after: supabase link --project-ref YOUR_REF
 
+[auth]
+enable_anonymous_sign_ins = true
+
 [functions.generate-upgrade-plan]
 verify_jwt = true
 
