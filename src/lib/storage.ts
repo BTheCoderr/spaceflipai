@@ -59,8 +59,69 @@ export function getPublicImageUrl(storagePath: string): string {
       : DEFAULT_MOCK_URL;
   }
 
+  // Keep a stable canonical storage URL in persisted rows. When the bucket is
+  // private, callers resolve this reference to a short-lived signed URL before
+  // rendering/exporting. This also keeps existing public-bucket rows readable.
   const { data } = client.storage.from(DESIGN_INPUTS_BUCKET).getPublicUrl(storagePath);
   return data.publicUrl;
+}
+
+const STORAGE_PUBLIC_MARKER = `/storage/v1/object/public/${DESIGN_INPUTS_BUCKET}/`;
+const STORAGE_SIGNED_MARKER = `/storage/v1/object/sign/${DESIGN_INPUTS_BUCKET}/`;
+
+export function extractDesignInputStoragePath(uri: string): string | null {
+  if (!uri) return null;
+  if (uri.startsWith('users/')) return uri;
+
+  for (const marker of [STORAGE_PUBLIC_MARKER, STORAGE_SIGNED_MARKER]) {
+    const markerIndex = uri.indexOf(marker);
+    if (markerIndex < 0) continue;
+
+    const encodedPath = uri.slice(markerIndex + marker.length).split('?')[0];
+    if (!encodedPath) return null;
+
+    try {
+      return decodeURIComponent(encodedPath);
+    } catch {
+      return encodedPath;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Converts a canonical SpaceFlip Storage reference into a short-lived signed
+ * URL. Non-Supabase URLs (example images, local files, data URLs) pass through.
+ *
+ * If signing fails while the bucket is still public, returning the original
+ * canonical URL preserves backward compatibility. Once the production bucket
+ * is private, owner-scoped Storage RLS must allow SELECT for this to succeed.
+ */
+export async function resolveDesignInputUrl(
+  uri: string,
+  expiresInSeconds = 60 * 60
+): Promise<string> {
+  const storagePath = extractDesignInputStoragePath(uri);
+  const client = getSupabaseClient();
+
+  if (!storagePath || !client) {
+    return uri;
+  }
+
+  const { data, error } = await client.storage
+    .from(DESIGN_INPUTS_BUCKET)
+    .createSignedUrl(storagePath, expiresInSeconds);
+
+  if (error || !data?.signedUrl) {
+    logUploadDiag('Signed URL resolution failed', {
+      storagePath,
+      message: error?.message ?? 'No signed URL returned',
+    });
+    return uri;
+  }
+
+  return data.signedUrl;
 }
 
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
