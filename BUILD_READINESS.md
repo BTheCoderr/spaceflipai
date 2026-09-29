@@ -7,9 +7,9 @@ This document covers how to run, test, and build SpaceFlip Pro for a private dem
 Property photo → AI upgrade plan → budget range + materials + priority checklist → client-ready PDF → save as a project.
 
 - **AI plan text:** Generated server-side via a Supabase Edge Function (Groq today; Gemini supported as a provider). Returns structured JSON.
-- **Concept image:** **Mocked** (a stock reference image). It is labeled "Concept Reference" everywhere and is **not** a real AI render.
+- **Concept image:** Real image generation is wired but **disabled for the App Store build by default**. When disabled, SpaceFlip shows the user's original **Property Photo** — never a stock/mock image.
 - **PDF export:** Real, via `expo-print` + `expo-sharing`.
-- **Persistence:** Supabase (`generation_jobs`, `design_projects`) with a local in-memory fallback.
+- **Persistence:** Supabase (`generation_jobs`, `design_projects`) for configured builds. Local in-memory behavior is development-only when Supabase env vars are intentionally absent; configured builds fail closed if a secure guest workspace cannot start.
 
 ## Local development
 
@@ -102,7 +102,7 @@ npm run build:android:preview
 ```
 
 ### App identifiers (in `app.json`)
-- iOS `bundleIdentifier`: `com.spaceflip.pro` (buildNumber `1`)
+- iOS `bundleIdentifier`: `com.spaceflip.pro` (buildNumber `3`)
 - Android `package`: `com.spaceflip.pro` (versionCode `1`)
 - version `1.0.0`
 
@@ -115,7 +115,7 @@ npm run build:android:preview
 - **No AI concept/visual image generation** — the Visual tab and PDF show the user's own
   uploaded **Property Photo**. There is no stock/mock/fake generated imagery.
 - **Payments are not active** — no RevenueCat, no subscriptions; there is no Paywall route in the app.
-- **Auth** uses anonymous Supabase guest sign-in (Guest Workspace), not a fixed demo user id.
+- **Auth** uses anonymous Supabase guest sign-in (Guest Workspace), not a fixed demo user id. Both production Edge Functions require a valid user JWT.
 - Expo Go cannot show the custom icon/splash; use a dev/preview build to verify them.
 
 ## Not in this build (internal notes)
@@ -131,13 +131,16 @@ npm run build:android:preview
 
 - AI plan generation depends on network + provider quota; on a brief provider hiccup the app
   still produces an upgrade plan from the user's project details instead of erroring.
-- Guest workspaces are stored under an anonymous Supabase user id and can be deleted in Settings.
+- Guest workspaces are stored under an anonymous Supabase user id and can be deleted in Settings. Property-photo storage is private-ready and should use `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` on the live project so display/export uses short-lived signed URLs.
 - Budget ranges are planning estimates, not quotes or final designs.
 
 ## Pre-build checklist
 
-- [ ] `npm run typecheck` passes
+- [ ] GitHub `SpaceFlip CI` passes (`npm run typecheck`, Expo compatibility, both Deno Edge Functions)
 - [ ] Root `.env` contains only `EXPO_PUBLIC_*` values
 - [ ] `supabase/.env.local` is gitignored and not tracked
+- [ ] Correct SpaceFlip Supabase project is connected and reachable
+- [ ] `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` applied to the live project
+- [ ] Both Edge Functions deployed with JWT verification enabled
 - [ ] Supabase secrets set for the target project
 - [ ] App reloaded with `-c` so the device runs the latest bundle
