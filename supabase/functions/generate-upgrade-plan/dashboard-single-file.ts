@@ -800,11 +800,33 @@ type ConceptImageOutcome = {
   estimatedImageCostCents: number;
 };
 
+async function resolveProviderInputImageUrl(
+  supabase: ReturnType<typeof createClient>,
+  record: GenerationJobRecord
+): Promise<string> {
+  const fallback = record.input_public_url ?? record.input_image_uri ?? '';
+  if (!record.input_storage_path) return fallback;
+
+  const { data, error } = await supabase.storage
+    .from(DESIGN_INPUTS_BUCKET)
+    .createSignedUrl(record.input_storage_path, 10 * 60);
+
+  if (error || !data?.signedUrl) {
+    console.warn('[generate-upgrade-plan] Could not sign provider input image:', {
+      message: error?.message ?? 'No signed URL returned',
+    });
+    return fallback;
+  }
+
+  return data.signedUrl;
+}
+
 async function maybeGenerateConceptImage(
   supabase: ReturnType<typeof createClient>,
   record: GenerationJobRecord,
   jobId: string,
   originalImageUrl: string,
+  providerInputImageUrl: string,
   planSummary: string | null
 ): Promise<ConceptImageOutcome> {
   // Default (no real concept image): show the user's original property photo.
@@ -838,7 +860,8 @@ async function maybeGenerateConceptImage(
     // Proceed if the guard query fails (one image per job is still bounded).
   }
 
-  const inputImageUrl = record.input_public_url ?? record.input_image_uri ?? '';
+  const inputImageUrl =
+    providerInputImageUrl || record.input_public_url || record.input_image_uri || '';
   const concept = await generateConceptImage({
     projectType: record.project_type,
     goal: record.goal,
@@ -983,7 +1006,7 @@ Deno.serve(async (req: Request) => {
       goal: record.goal,
       budgetRange: record.budget_range,
       notes: record.notes,
-      inputPublicUrl: inputImageUrl,
+      inputPublicUrl: providerInputImageUrl,
       prompt,
     });
     if (planResult.source === 'mock') {
