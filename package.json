@@ -11,7 +11,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "assets:generate": "python3 scripts/generate-brand-assets.py",
-    "functions:check": "deno check --config supabase/functions/deno.json supabase/functions/generate-upgrade-plan/index.ts",
+    "functions:check": "deno check --config supabase/functions/deno.json supabase/functions/generate-upgrade-plan/index.ts supabase/functions/delete-user-workspace/index.ts",
     "build:ios:dev": "eas build --platform ios --profile development",
     "build:ios:preview": "eas build --platform ios --profile preview",
     "build:android:preview": "eas build --platform android --profile preview"
