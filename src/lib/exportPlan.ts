@@ -9,6 +9,7 @@ import {
 import type { PickedImageSource } from './imagePicker';
 import { formatSourceLabel } from './imagePicker';
 import type { ResultPlanViewModel } from './resultPlanData';
+import { resolveDesignInputUrl } from './storage';
 
 export const EXPORT_PLAN_ERROR_MESSAGE = "Couldn't export this plan. Please try again.";
 
@@ -101,23 +102,29 @@ function guessMimeType(uri: string): string {
 export async function resolveImageForPdf(uri?: string): Promise<string | undefined> {
   if (!uri) return undefined;
 
-  if (uri.startsWith('http://') || uri.startsWith('https://') || uri.startsWith('data:image/')) {
-    return uri;
+  const resolvedUri = await resolveDesignInputUrl(uri);
+
+  if (
+    resolvedUri.startsWith('http://') ||
+    resolvedUri.startsWith('https://') ||
+    resolvedUri.startsWith('data:image/')
+  ) {
+    return resolvedUri;
   }
 
-  if (!isLocalImageUri(uri)) {
+  if (!isLocalImageUri(resolvedUri)) {
     return undefined;
   }
 
   try {
-    const base64 = await FileSystem.readAsStringAsync(uri, {
+    const base64 = await FileSystem.readAsStringAsync(resolvedUri, {
       encoding: FileSystem.EncodingType.Base64,
     });
     if (!base64) return undefined;
-    const mimeType = guessMimeType(uri);
+    const mimeType = guessMimeType(resolvedUri);
     return `data:${mimeType};base64,${base64}`;
   } catch (error) {
-    console.warn('[SpaceFlip Pro][Export] Local image conversion failed:', { uri, error });
+    console.warn('[SpaceFlip Pro][Export] Local image conversion failed:', { uri: resolvedUri, error });
     return undefined;
   }
 }

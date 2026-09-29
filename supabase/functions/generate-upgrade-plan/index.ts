@@ -24,6 +24,29 @@ type ConceptImageOutcome = {
   estimatedImageCostCents: number;
 };
 
+async function resolveProviderInputImageUrl(
+  supabase: SupabaseClient<any>,
+  record: GenerationJobRecord
+): Promise<string> {
+  const fallback = record.input_public_url ?? record.input_image_uri ?? '';
+  if (!record.input_storage_path) {
+    return fallback;
+  }
+
+  const { data, error } = await supabase.storage
+    .from(DESIGN_INPUTS_BUCKET)
+    .createSignedUrl(record.input_storage_path, 10 * 60);
+
+  if (error || !data?.signedUrl) {
+    console.warn('[generate-upgrade-plan] Could not sign provider input image:', {
+      message: error?.message ?? 'No signed URL returned',
+    });
+    return fallback;
+  }
+
+  return data.signedUrl;
+}
+
 /**
  * Attempts real AI concept image generation when enabled. When disabled or on
  * any failure, returns the user's ORIGINAL property photo as the visual — never
@@ -34,6 +57,7 @@ async function maybeGenerateConceptImage(
   record: GenerationJobRecord,
   jobId: string,
   originalImageUrl: string,
+  providerInputImageUrl: string,
   planSummary: string | null
 ): Promise<ConceptImageOutcome> {
   // Default (no real concept image): show the original property photo.
@@ -68,7 +92,8 @@ async function maybeGenerateConceptImage(
     // If the guard query fails, proceed (single image per job is still bounded).
   }
 
-  const inputImageUrl = record.input_public_url ?? record.input_image_uri ?? '';
+  const inputImageUrl =
+    providerInputImageUrl || record.input_public_url || record.input_image_uri || '';
   const concept = await generateConceptImage({
     projectType: record.project_type,
     goal: record.goal,
@@ -231,14 +256,15 @@ Deno.serve(async (req: Request) => {
 
   try {
     const prompt = buildUpgradePrompt(record);
-    const inputImageUrl = record.input_public_url ?? record.input_image_uri ?? '';
+    const originalImageUrl = record.input_public_url ?? record.input_image_uri ?? '';
+    const providerInputImageUrl = await resolveProviderInputImageUrl(supabase, record);
 
     const planResult = await generateUpgradePlanText({
       projectType: record.project_type,
       goal: record.goal,
       budgetRange: record.budget_range,
       notes: record.notes,
-      inputPublicUrl: inputImageUrl,
+      inputPublicUrl: providerInputImageUrl,
       prompt,
     });
 
@@ -252,12 +278,12 @@ Deno.serve(async (req: Request) => {
 
     // Real AI concept image only when enabled; otherwise the user's original
     // property photo is used as the visual (never a stock/mock image).
-    const originalImageUrl = record.input_public_url ?? record.input_image_uri ?? inputImageUrl ?? '';
     const image = await maybeGenerateConceptImage(
       supabase,
       record,
       jobId,
       originalImageUrl,
+      providerInputImageUrl,
       planResult.payload?.upgradeSummary ?? null
     );
 

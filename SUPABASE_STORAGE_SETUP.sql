@@ -1,10 +1,14 @@
+-- LEGACY ONLY: pre-auth demo storage setup.
+-- Do not use this file for a production SpaceFlip deployment.
+-- Production should use SUPABASE_AUTH_MIGRATION.sql plus
+-- SUPABASE_PRIVATE_STORAGE_MIGRATION.sql.
+
 -- SpaceFlip Pro — Storage policies for MVP device testing (Phase 5)
 -- Run in Supabase Dashboard → SQL Editor
 --
 -- Fixes: "new row violates row-level security policy" (403) on upload
--- NOTE (Phase 16): Auth is now enabled. Run SUPABASE_AUTH_MIGRATION.sql to
---   replace these anon demo-user policies with per-user policies scoped to
---   users/{auth.uid()}/inputs/... The bucket stays PUBLIC for image display.
+-- NOTE: Auth is now enabled. Run SUPABASE_AUTH_MIGRATION.sql and
+--   SUPABASE_PRIVATE_STORAGE_MIGRATION.sql for owner-scoped private storage.
 
 -- Ensure bucket exists (create manually in Dashboard if this fails):
 -- Storage → New bucket → name: design-inputs → Public: ON

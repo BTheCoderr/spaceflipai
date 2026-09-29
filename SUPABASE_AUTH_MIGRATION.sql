@@ -100,12 +100,13 @@ create policy "Users delete own design_projects"
 --    foldername(name) = ['users', '<uid>', 'inputs', ...]
 --
 -- Bucket visibility:
---   The design-inputs bucket is currently PUBLIC so getPublicUrl() can render
---   concept/original images without signed URLs. We keep it public in this
---   phase to avoid breaking image display. Writes are still restricted to the
---   owner's folder by the policies below. Move to a private bucket + signed
---   URLs in a later phase.
+--   Production storage is PRIVATE. The app keeps stable canonical references
+--   in persisted rows and resolves them to short-lived signed URLs when needed.
 -- ---------------------------------------------------------------------------
+
+update storage.buckets
+set public = false
+where id = 'design-inputs';
 
 -- Remove the old MVP anon storage policies.
 drop policy if exists "MVP anon insert design-inputs" on storage.objects;
