@@ -174,7 +174,12 @@ async function generateWithStability(
   }
 
   const form = new FormData();
-  form.append('image', new Blob([source.bytes], { type: source.contentType }), 'input.png');
+  // Copy into a concrete ArrayBuffer for Deno's BlobPart typing. Provider
+  // downloads may surface as Uint8Array<ArrayBufferLike>, which can include a
+  // SharedArrayBuffer-backed view that Blob does not accept.
+  const imageBuffer = new ArrayBuffer(source.bytes.byteLength);
+  new Uint8Array(imageBuffer).set(source.bytes);
+  form.append('image', new Blob([imageBuffer], { type: source.contentType }), 'input.png');
   form.append('prompt', prompt);
   form.append('control_strength', '0.7');
   form.append('output_format', 'png');
