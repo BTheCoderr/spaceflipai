@@ -134,6 +134,16 @@ npm run build:android:preview
 - Guest workspaces are stored under an anonymous Supabase user id and can be deleted in Settings. Property-photo storage is private-ready and should use `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` on the live project so display/export uses short-lived signed URLs.
 - Budget ranges are planning estimates, not quotes or final designs.
 
+## Production backend privacy
+
+Before TestFlight/public beta on the live backend:
+
+- Apply `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` so `design-inputs` is private.
+- Deploy both Edge Functions with JWT verification enabled.
+- Verify anonymous guest auth, owner-scoped RLS, signed image display, PDF export, and workspace deletion against the live SpaceFlip Supabase project.
+
+The app stores stable SpaceFlip Storage references and resolves them to short-lived signed URLs for display/export and AI-provider access.
+
 ## Pre-build checklist
 
 - [ ] GitHub `SpaceFlip CI` passes (`npm run typecheck`, Expo compatibility, both Deno Edge Functions)
