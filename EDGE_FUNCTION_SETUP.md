@@ -22,7 +22,7 @@ Root `.env` must **not** contain `GEMINI_API_KEY`, `GROQ_API_KEY`, or `SUPABASE_
 
 **If keys were exposed** (screenshot, chat, commit): rotate in [Google AI Studio](https://aistudio.google.com/apikey), [Groq Console](https://console.groq.com/keys), and Supabase if needed. Never paste real keys into docs, commits, or terminal history — use `read -s` (below).
 
-**Image generation is mocked by default.** Real AI concept images (Phase 18) are gated behind `IMAGE_GENERATION_ENABLED` + a provider key — see the Phase 18 section below.
+**Image generation is disabled by default.** Real AI concept images are wired behind `IMAGE_GENERATION_ENABLED` + a provider key. When disabled, the app uses the user's original property photo — not a stock/mock image.
 
 ---
 
@@ -32,7 +32,10 @@ Root `.env` must **not** contain `GEMINI_API_KEY`, `GROQ_API_KEY`, or `SUPABASE_
 - `generation_jobs` table exists — run `SUPABASE_DATABASE_SETUP.sql`
 - Phase 9 columns on `generation_jobs`: `result_payload`, `plan_source`, `ai_provider` (see `SUPABASE_SETUP.md`)
 - `.env` in the mobile app with `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-- Storage upload working (Phase 5)
+- Anonymous Supabase sign-in enabled
+- `SUPABASE_AUTH_MIGRATION.sql` applied
+- `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` applied for private `design-inputs` storage
+- Storage upload working for the authenticated user's own folder
 
 ---
 
@@ -115,7 +118,7 @@ Deploy **after** setting secrets (or redeploy after adding secrets):
 supabase functions deploy generate-upgrade-plan --project-ref tgmmxzyvhiuttmjumwlm
 ```
 
-`supabase/config.toml` sets `verify_jwt = false` for MVP (no auth yet). The app invokes with the **anon** key.
+`supabase/config.toml` requires `verify_jwt = true`. The app invokes the function with the current anonymous guest session JWT; the function verifies that authenticated user owns the requested generation job before any service-role update.
 
 ---
 
@@ -129,10 +132,11 @@ Dashboard → **Edge Functions** → **generate-upgrade-plan** → **Test**
 
 ```json
 {
-  "jobId": "YOUR-GENERATION-JOB-UUID",
-  "userId": "demo-user"
+  "jobId": "YOUR-GENERATION-JOB-UUID"
 }
 ```
+
+The request must include the **current Supabase user's access token** in the `Authorization: Bearer ...` header. A project anon/publishable key is not a user JWT.
 
 Create a job first (Visualize → Continue on device) and copy its `id` from **Table Editor → generation_jobs**.
 
@@ -142,7 +146,7 @@ Create a job first (Visualize → Continue on device) and copy its `id` from **T
 {
   "ok": true,
   "jobId": "...",
-  "resultImageUrl": "https://images.unsplash.com/...",
+  "resultImageUrl": "https://...signed-property-photo-url...",
   "resultPayload": {
     "upgradeSummary": "...",
     "businessOutcome": "...",
@@ -168,9 +172,10 @@ Create a job first (Visualize → Continue on device) and copy its `id` from **T
 
 ```bash
 curl -i "https://tgmmxzyvhiuttmjumwlm.supabase.co/functions/v1/generate-upgrade-plan" \
-  -H "Authorization: Bearer YOUR_ANON_KEY" \
+  -H "apikey: YOUR_PUBLISHABLE_OR_ANON_KEY" \
+  -H "Authorization: Bearer YOUR_USER_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"jobId":"YOUR-JOB-UUID","userId":"demo-user"}'
+  -d '{"jobId":"YOUR-JOB-UUID"}'
 ```
 
 ---
@@ -183,7 +188,7 @@ After a successful run:
 2. Open the completed row
 3. Confirm:
    - `status` = `completed`
-   - `result_image_url` = mock Unsplash URL
+   - `result_image_url` = the user's property photo reference/signed display URL when concept-image generation is off
    - `result_payload` = JSON object with plan fields (not `{}` after generation)
    - `plan_source` = `ai` or `mock`
    - `ai_provider` = `gemini`, `groq`, or `mock`
@@ -213,7 +218,7 @@ Function logs (Dashboard → Edge Functions → Logs) show warnings when falling
 8. Metro logs (dev):
 
 ```text
-[SpaceFlip Pro][AI] Invoking generate-upgrade-plan { jobId, userId }
+[SpaceFlip Pro][AI] Invoking generate-upgrade-plan { jobId }
 [SpaceFlip Pro][AI] Edge function success { jobId, resultImageUrl, planSource: 'ai', aiProvider: 'gemini', ... }
 ```
 
@@ -235,7 +240,7 @@ Local mock generation still runs when **Supabase env vars are missing**.
 | Name | `generate-upgrade-plan` |
 | URL | `{SUPABASE_URL}/functions/v1/generate-upgrade-plan` |
 | Method | `POST` |
-| Body | `{ "jobId": string, "userId": "demo-user" }` |
+| Body | `{ "jobId": string }` |
 
 ---
 
@@ -280,7 +285,7 @@ npm run typecheck
 |-------|-----|
 | Invoke 404 | Deploy function: `supabase functions deploy generate-upgrade-plan --project-ref tgmmxzyvhiuttmjumwlm` |
 | Job not found | Use UUID from `generation_jobs`, not local `job-...` ids from mock-only mode |
-| 403 user mismatch | Pass `"userId": "demo-user"` |
+| 401 / 403 auth failure | Confirm the app has an active Supabase guest session, send that user access token, and confirm the job belongs to the same `auth.uid()` |
 | App uses local mock | Add `.env` Supabase vars and restart with `npm run dev` |
 | Function 500 on update | Run Phase 9 SQL for `result_payload` / `plan_source` / `ai_provider` columns |
 | Always `plan_source = mock` | Set `GEMINI_API_KEY` secret and redeploy; check Edge Function logs |
@@ -338,8 +343,7 @@ Redeploy the function (or paste `dashboard-single-file.ts`, version `phase18-ima
 2. If enabled, the function builds an image-editing prompt from project type, goal,
    budget, notes, and the plan summary, then sends the **original photo URL** to the
    provider (FLUX Kontext preserves layout/camera angle).
-3. The generated PNG is stored at `users/{uid}/outputs/{jobId}/concept.png` (service
-   role) and `result_image_url` is set to its public URL.
+3. The generated PNG is stored at `users/{uid}/outputs/{jobId}/concept.png` in the private `design-inputs` bucket. The function returns a short-lived signed URL for display while persisted rows retain stable storage references.
 4. On any failure (or when image generation is disabled) the function does **not** use a
    stock/mock image: `concept_image_url` stays null, `image_provider` is `none`, and
    `result_image_url` is set to the user's original photo — the user sees the
@@ -372,6 +376,6 @@ Redeploy the function (or paste `dashboard-single-file.ts`, version `phase18-ima
 ## Next phases
 
 1. ~~**Auth** — replace `demo-user` with `auth.uid()`~~ ✅ done (Phase 16)
-2. ~~**Private storage paths** per user~~ ✅ done (Phase 16)
+2. ~~**Private per-user storage + signed display URLs**~~ ✅ code complete; apply `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` to the live project
 3. ~~**Real image generation**~~ ✅ done (Phase 18, gated by `IMAGE_GENERATION_ENABLED`)
 4. **Quotas / paywall** — out of scope for MVP (no RevenueCat / subscriptions)
