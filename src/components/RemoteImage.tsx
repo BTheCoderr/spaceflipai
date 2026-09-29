@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Image,
@@ -11,6 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { normalizeImageUrl } from '../constants/layout';
 import { isLocalImageUri } from '../lib/imagePicker';
+import { resolveDesignInputUrl } from '../lib/storage';
 import { colors, radius } from '../constants/theme';
 
 type Props = {
@@ -23,7 +24,29 @@ type Props = {
 export function RemoteImage({ uri, style, containerStyle, borderRadius = radius.lg }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [displayUri, setDisplayUri] = useState<string | null>(null);
   const normalizedUri = isLocalImageUri(uri) ? uri : normalizeImageUrl(uri);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(false);
+    setDisplayUri(null);
+
+    void resolveDesignInputUrl(normalizedUri)
+      .then((resolved) => {
+        if (active) setDisplayUri(resolved);
+      })
+      .catch(() => {
+        if (active) {
+          setDisplayUri(normalizedUri);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [normalizedUri]);
 
   return (
     <View style={[styles.container, { borderRadius }, containerStyle]}>
@@ -36,9 +59,9 @@ export function RemoteImage({ uri, style, containerStyle, borderRadius = radius.
           )}
         </View>
       )}
-      {!error && (
+      {!error && displayUri && (
         <Image
-          source={{ uri: normalizedUri }}
+          source={{ uri: displayUri }}
           style={[styles.image, { borderRadius }, style]}
           onLoadStart={() => {
             setLoading(true);
