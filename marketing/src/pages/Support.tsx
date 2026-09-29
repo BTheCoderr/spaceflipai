@@ -26,9 +26,6 @@ export function SupportPage() {
         <p className="contact-meta">
           Response time: {siteConfig.supportResponseTime}.
         </p>
-        <p className="contact-meta">
-          Planned support inbox: {siteConfig.supportEmailFuture}
-        </p>
       </Card>
 
       <div className="legal-links-row">
@@ -116,15 +113,16 @@ const faqItems = [
     ),
   },
   {
-    question: 'How do I request data deletion?',
+    question: 'How do I delete my data?',
     answer: (
       <p>
-        Email{' '}
+        In the app, open Settings and choose <strong>Delete guest workspace and data</strong> to
+        remove that workspace's saved projects, generation jobs, and uploaded property photos.
+        You can also email{' '}
         <a href={mailto('SpaceFlip Pro Data Deletion Request')}>
           {siteConfig.supportEmail}
         </a>{' '}
-        with the subject line &quot;SpaceFlip Pro Data Deletion Request.&quot; See our{' '}
-        <Link to="/delete-data">Delete Data page</Link> for details.
+        for help. See our <Link to="/delete-data">Delete Data page</Link> for details.
       </p>
     ),
   },
