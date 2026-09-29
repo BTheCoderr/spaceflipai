@@ -28,7 +28,7 @@ Root `.env` must **not** contain `GEMINI_API_KEY`, `GROQ_API_KEY`, or `SUPABASE_
 
 ## Prerequisites
 
-- Supabase project linked (spaceflip)
+- Live SpaceFlip Supabase project: `fslxwcehapelumttwmcf` (BTheWorks organization)
 - `generation_jobs` table exists — run `SUPABASE_DATABASE_SETUP.sql`
 - Phase 9 columns on `generation_jobs`: `result_payload`, `plan_source`, `ai_provider` (see `SUPABASE_SETUP.md`)
 - `.env` in the mobile app with `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`
@@ -66,7 +66,7 @@ supabase --version
 ```bash
 cd "/Users/beforreal/Desktop/spaceflip AI"
 supabase login
-supabase link --project-ref tgmmxzyvhiuttmjumwlm
+supabase link --project-ref fslxwcehapelumttwmcf
 ```
 
 Use your project ref from Supabase Dashboard → Settings → General.
@@ -84,7 +84,7 @@ After rotating keys, set secrets **without** echoing values to shell history:
 
 ```bash
 read -s GEMINI_API_KEY
-supabase secrets set GEMINI_API_KEY="$GEMINI_API_KEY" --project-ref tgmmxzyvhiuttmjumwlm
+supabase secrets set GEMINI_API_KEY="$GEMINI_API_KEY" --project-ref fslxwcehapelumttwmcf
 unset GEMINI_API_KEY
 ```
 
@@ -94,7 +94,7 @@ If Gemini is missing or fails, the function tries Groq when configured:
 
 ```bash
 read -s GROQ_API_KEY
-supabase secrets set GROQ_API_KEY="$GROQ_API_KEY" --project-ref tgmmxzyvhiuttmjumwlm
+supabase secrets set GROQ_API_KEY="$GROQ_API_KEY" --project-ref fslxwcehapelumttwmcf
 unset GROQ_API_KEY
 ```
 
@@ -115,7 +115,7 @@ supabase secrets list
 Deploy **after** setting secrets (or redeploy after adding secrets):
 
 ```bash
-supabase functions deploy generate-upgrade-plan --project-ref tgmmxzyvhiuttmjumwlm
+supabase functions deploy generate-upgrade-plan --project-ref fslxwcehapelumttwmcf
 ```
 
 `supabase/config.toml` requires `verify_jwt = true`. The app invokes the function with the current anonymous guest session JWT; the function verifies that authenticated user owns the requested generation job before any service-role update.
@@ -171,7 +171,7 @@ Create a job first (Visualize → Continue on device) and copy its `id` from **T
 ### B. curl
 
 ```bash
-curl -i "https://tgmmxzyvhiuttmjumwlm.supabase.co/functions/v1/generate-upgrade-plan" \
+curl -i "https://fslxwcehapelumttwmcf.supabase.co/functions/v1/generate-upgrade-plan" \
   -H "apikey: YOUR_PUBLISHABLE_OR_ANON_KEY" \
   -H "Authorization: Bearer YOUR_USER_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
@@ -283,7 +283,7 @@ npm run typecheck
 
 | Issue | Fix |
 |-------|-----|
-| Invoke 404 | Deploy function: `supabase functions deploy generate-upgrade-plan --project-ref tgmmxzyvhiuttmjumwlm` |
+| Invoke 404 | Deploy function: `supabase functions deploy generate-upgrade-plan --project-ref fslxwcehapelumttwmcf` |
 | Job not found | Use UUID from `generation_jobs`, not local `job-...` ids from mock-only mode |
 | 401 / 403 auth failure | Confirm the app has an active Supabase guest session, send that user access token, and confirm the job belongs to the same `auth.uid()` |
 | App uses local mock | Add `.env` Supabase vars and restart with `npm run dev` |
@@ -314,7 +314,7 @@ Replicate (recommended — FLUX Kontext image editing):
 
 ```bash
 read -s REPLICATE_API_TOKEN
-supabase secrets set REPLICATE_API_TOKEN="$REPLICATE_API_TOKEN" --project-ref tgmmxzyvhiuttmjumwlm
+supabase secrets set REPLICATE_API_TOKEN="$REPLICATE_API_TOKEN" --project-ref fslxwcehapelumttwmcf
 unset REPLICATE_API_TOKEN
 ```
 
@@ -322,17 +322,17 @@ Or Stability (fallback):
 
 ```bash
 read -s STABILITY_API_KEY
-supabase secrets set STABILITY_API_KEY="$STABILITY_API_KEY" --project-ref tgmmxzyvhiuttmjumwlm
+supabase secrets set STABILITY_API_KEY="$STABILITY_API_KEY" --project-ref fslxwcehapelumttwmcf
 unset STABILITY_API_KEY
 ```
 
 ### 3. Turn it on (only after the key is set + you approve)
 
 ```bash
-supabase secrets set IMAGE_GENERATION_ENABLED=true --project-ref tgmmxzyvhiuttmjumwlm
-supabase secrets set IMAGE_GENERATION_PROVIDER=replicate --project-ref tgmmxzyvhiuttmjumwlm
+supabase secrets set IMAGE_GENERATION_ENABLED=true --project-ref fslxwcehapelumttwmcf
+supabase secrets set IMAGE_GENERATION_PROVIDER=replicate --project-ref fslxwcehapelumttwmcf
 # optional soft cost guard (default 5):
-supabase secrets set MAX_IMAGE_GENERATIONS_PER_USER_PER_DAY=5 --project-ref tgmmxzyvhiuttmjumwlm
+supabase secrets set MAX_IMAGE_GENERATIONS_PER_USER_PER_DAY=5 --project-ref fslxwcehapelumttwmcf
 ```
 
 Redeploy the function (or paste `dashboard-single-file.ts`, version `phase18-image-v1`).

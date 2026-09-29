@@ -131,7 +131,7 @@ npm run build:android:preview
 
 - AI plan generation depends on network + provider quota; on a brief provider hiccup the app
   still produces an upgrade plan from the user's project details instead of erroring.
-- Guest workspaces are stored under an anonymous Supabase user id and can be deleted in Settings. Property-photo storage is private-ready and should use `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` on the live project so display/export uses short-lived signed URLs.
+- Guest workspaces are stored under an anonymous Supabase user id and can be deleted in Settings. The live project now uses private `design-inputs` storage with owner-scoped policies and signed display/export URLs.
 - Budget ranges are planning estimates, not quotes or final designs.
 
 ## Pre-build checklist
@@ -139,8 +139,8 @@ npm run build:android:preview
 - [ ] GitHub `SpaceFlip CI` passes (`npm run typecheck`, Expo compatibility, both Deno Edge Functions)
 - [ ] Root `.env` contains only `EXPO_PUBLIC_*` values
 - [ ] `supabase/.env.local` is gitignored and not tracked
-- [ ] Correct SpaceFlip Supabase project is connected and reachable
-- [ ] `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` applied to the live project
-- [ ] Both Edge Functions deployed with JWT verification enabled
+- [x] Live SpaceFlip Supabase project `fslxwcehapelumttwmcf` is connected and reachable
+- [x] Private `design-inputs` storage + owner-scoped RLS applied to the live project
+- [x] Both Edge Functions deployed with JWT verification enabled
 - [ ] Supabase secrets set for the target project
 - [ ] App reloaded with `-c` so the device runs the latest bundle

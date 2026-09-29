@@ -14,7 +14,7 @@
 --
 -- Decision: user_id stays TEXT (not uuid).
 --   Existing 'demo-user' rows use a non-uuid value, so we keep the column as
---   text and enforce ownership with auth.uid()::text. This is safe and avoids a
+--   text and enforce ownership with (select auth.uid())::text. This is safe and avoids a
 --   destructive type migration. New rows store the real auth uid as text.
 
 -- ---------------------------------------------------------------------------
@@ -38,26 +38,26 @@ drop policy if exists "Users select own generation_jobs" on public.generation_jo
 create policy "Users select own generation_jobs"
   on public.generation_jobs for select
   to authenticated
-  using (user_id = auth.uid()::text);
+  using (user_id = (select auth.uid())::text);
 
 drop policy if exists "Users insert own generation_jobs" on public.generation_jobs;
 create policy "Users insert own generation_jobs"
   on public.generation_jobs for insert
   to authenticated
-  with check (user_id = auth.uid()::text);
+  with check (user_id = (select auth.uid())::text);
 
 drop policy if exists "Users update own generation_jobs" on public.generation_jobs;
 create policy "Users update own generation_jobs"
   on public.generation_jobs for update
   to authenticated
-  using (user_id = auth.uid()::text)
-  with check (user_id = auth.uid()::text);
+  using (user_id = (select auth.uid())::text)
+  with check (user_id = (select auth.uid())::text);
 
 drop policy if exists "Users delete own generation_jobs" on public.generation_jobs;
 create policy "Users delete own generation_jobs"
   on public.generation_jobs for delete
   to authenticated
-  using (user_id = auth.uid()::text);
+  using (user_id = (select auth.uid())::text);
 
 -- ---------------------------------------------------------------------------
 -- 3. design_projects — per-user RLS
@@ -73,26 +73,26 @@ drop policy if exists "Users select own design_projects" on public.design_projec
 create policy "Users select own design_projects"
   on public.design_projects for select
   to authenticated
-  using (user_id = auth.uid()::text);
+  using (user_id = (select auth.uid())::text);
 
 drop policy if exists "Users insert own design_projects" on public.design_projects;
 create policy "Users insert own design_projects"
   on public.design_projects for insert
   to authenticated
-  with check (user_id = auth.uid()::text);
+  with check (user_id = (select auth.uid())::text);
 
 drop policy if exists "Users update own design_projects" on public.design_projects;
 create policy "Users update own design_projects"
   on public.design_projects for update
   to authenticated
-  using (user_id = auth.uid()::text)
-  with check (user_id = auth.uid()::text);
+  using (user_id = (select auth.uid())::text)
+  with check (user_id = (select auth.uid())::text);
 
 drop policy if exists "Users delete own design_projects" on public.design_projects;
 create policy "Users delete own design_projects"
   on public.design_projects for delete
   to authenticated
-  using (user_id = auth.uid()::text);
+  using (user_id = (select auth.uid())::text);
 
 -- ---------------------------------------------------------------------------
 -- 4. Storage — design-inputs bucket, per-user folders
@@ -104,9 +104,9 @@ create policy "Users delete own design_projects"
 --   in persisted rows and resolves them to short-lived signed URLs when needed.
 -- ---------------------------------------------------------------------------
 
-update storage.buckets
-set public = false
-where id = 'design-inputs';
+insert into storage.buckets (id, name, public)
+values ('design-inputs', 'design-inputs', false)
+on conflict (id) do update set public = false;
 
 -- Remove the old MVP anon storage policies.
 drop policy if exists "MVP anon insert design-inputs" on storage.objects;
@@ -120,7 +120,7 @@ create policy "Users insert own design-inputs"
   with check (
     bucket_id = 'design-inputs'
     and (storage.foldername(name))[1] = 'users'
-    and (storage.foldername(name))[2] = auth.uid()::text
+    and (storage.foldername(name))[2] = (select auth.uid())::text
   );
 
 drop policy if exists "Users select own design-inputs" on storage.objects;
@@ -130,7 +130,7 @@ create policy "Users select own design-inputs"
   using (
     bucket_id = 'design-inputs'
     and (storage.foldername(name))[1] = 'users'
-    and (storage.foldername(name))[2] = auth.uid()::text
+    and (storage.foldername(name))[2] = (select auth.uid())::text
   );
 
 -- Required for upsert (replace) of an existing object.
@@ -141,12 +141,12 @@ create policy "Users update own design-inputs"
   using (
     bucket_id = 'design-inputs'
     and (storage.foldername(name))[1] = 'users'
-    and (storage.foldername(name))[2] = auth.uid()::text
+    and (storage.foldername(name))[2] = (select auth.uid())::text
   )
   with check (
     bucket_id = 'design-inputs'
     and (storage.foldername(name))[1] = 'users'
-    and (storage.foldername(name))[2] = auth.uid()::text
+    and (storage.foldername(name))[2] = (select auth.uid())::text
   );
 
 drop policy if exists "Users delete own design-inputs" on storage.objects;
@@ -156,7 +156,7 @@ create policy "Users delete own design-inputs"
   using (
     bucket_id = 'design-inputs'
     and (storage.foldername(name))[1] = 'users'
-    and (storage.foldername(name))[2] = auth.uid()::text
+    and (storage.foldername(name))[2] = (select auth.uid())::text
   );
 
 -- ---------------------------------------------------------------------------
@@ -174,3 +174,23 @@ create policy "Users delete own design-inputs"
 --   and tablename in ('generation_jobs', 'design_projects', 'objects')
 --   order by tablename, cmd;
 -- ---------------------------------------------------------------------------
+
+
+-- ---------------------------------------------------------------------------
+-- 6. Explicit Data API grants for modern projects + platform helper hardening
+-- ---------------------------------------------------------------------------
+grant usage on schema public to authenticated, service_role;
+grant select, insert, update, delete on table public.generation_jobs to authenticated, service_role;
+grant select, insert, update, delete on table public.design_projects to authenticated, service_role;
+revoke all on table public.generation_jobs from anon;
+revoke all on table public.design_projects from anon;
+
+-- New Supabase projects may include this SECURITY DEFINER event-trigger helper.
+-- It does not need to be callable through the Data API.
+do $$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    revoke execute on function public.rls_auto_enable() from public, anon, authenticated;
+  end if;
+end
+$$;

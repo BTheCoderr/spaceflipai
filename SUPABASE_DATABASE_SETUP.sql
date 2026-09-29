@@ -92,6 +92,9 @@ create table if not exists public.design_projects (
 create index if not exists design_projects_user_id_idx
   on public.design_projects (user_id);
 
+create index if not exists design_projects_generation_job_id_idx
+  on public.design_projects (generation_job_id);
+
 create index if not exists design_projects_project_type_idx
   on public.design_projects (project_type);
 
