@@ -1,8 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/supabase.generated';
 import { env } from './config';
 
-let supabaseClient: SupabaseClient | null = null;
+let supabaseClient: SupabaseClient<Database> | null = null;
 let warnedMissingConfig = false;
 let loggedConfigStatus = false;
 
@@ -38,7 +39,7 @@ if (__DEV__) {
  * Never throws — returns null when unconfigured.
  * Service role keys must NEVER be used in the mobile app.
  */
-export function getSupabaseClient(): SupabaseClient | null {
+export function getSupabaseClient(): SupabaseClient<Database> | null {
   if (!hasSupabaseConfig()) {
     if (!warnedMissingConfig && __DEV__) {
       console.warn(
@@ -50,7 +51,7 @@ export function getSupabaseClient(): SupabaseClient | null {
   }
 
   if (!supabaseClient) {
-    supabaseClient = createClient(env.supabaseUrl, env.supabaseAnonKey, {
+    supabaseClient = createClient<Database>(env.supabaseUrl, env.supabaseAnonKey, {
       auth: {
         // Persist the anonymous/linked session across launches so user_id is stable.
         storage: AsyncStorage,
