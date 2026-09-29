@@ -19,8 +19,7 @@ export function PrivacyPage() {
         <p>
           This Privacy Policy describes how {siteConfig.companyName} (&quot;we,&quot; &quot;us,&quot;
           or &quot;our&quot;) handles information when you use the SpaceFlip Pro mobile app and
-          related services. This policy should be reviewed by qualified counsel before public
-          launch.
+          related services.
         </p>
 
         <h2>Information we collect</h2>
@@ -91,6 +90,11 @@ export function PrivacyPage() {
             <strong>Delete saved projects</strong> in the app from the project detail screen
           </li>
           <li>
+            <strong>Delete your entire guest workspace</strong> from Settings → Delete guest
+            workspace and data. This removes saved projects, generation jobs, and uploaded
+            property photos associated with that workspace, then signs you out.
+          </li>
+          <li>
             <strong>Request deletion by email</strong> at{' '}
             <a href={mailto('SpaceFlip Pro Data Deletion Request')}>
               {siteConfig.supportEmail}
@@ -124,14 +128,6 @@ export function PrivacyPage() {
           <a href={mailto('SpaceFlip Pro Privacy Question')}>{siteConfig.supportEmail}</a>.
         </p>
 
-        <div className="notice" style={{ marginTop: '1.5rem' }}>
-          <strong>Important disclaimer</strong>
-          <p>
-            This policy is provided for the current version and should be reviewed and updated by
-            legal counsel before public launch. The app stores uploaded property photos and project
-            data — we do not claim &quot;Data Not Collected.&quot;
-          </p>
-        </div>
       </div>
     </PageShell>
   );

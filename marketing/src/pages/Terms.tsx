@@ -95,13 +95,6 @@ export function TermsPage() {
           <a href={mailto('SpaceFlip Pro Terms Question')}>{siteConfig.supportEmail}</a>.
         </p>
 
-        <div className="notice" style={{ marginTop: '1.5rem' }}>
-          <strong>Review note</strong>
-          <p>
-            These Terms are provided for the current version and should be reviewed by legal counsel
-            before public launch.
-          </p>
-        </div>
       </div>
     </PageShell>
   );

@@ -42,6 +42,12 @@ jobs:
       - name: Critical vulnerability gate
         run: npm audit --omit=dev --audit-level=critical
 
+      - name: Install marketing dependencies
+        run: npm --prefix marketing ci
+
+      - name: Build marketing and legal site
+        run: npm --prefix marketing run build
+
       - name: Set up Deno
         uses: denoland/setup-deno@v2
         with:
