@@ -1,5 +1,6 @@
--- SpaceFlip Pro — Phase 16: Supabase Auth ownership (anonymous guest auth)
--- Run in Supabase Dashboard → SQL Editor.
+-- SpaceFlip Pro — LEGACY upgrade path: Supabase Auth ownership
+-- For a brand-new backend use SUPABASE_FRESH_PROJECT_SETUP.sql instead.
+-- This file is retained for upgrading the original demo-user/text-id schema.
 --
 -- What this does:
 --   * Switches row ownership from the static 'demo-user' text id to the

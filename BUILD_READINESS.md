@@ -134,13 +134,23 @@ npm run build:android:preview
 - Guest workspaces are stored under an anonymous Supabase user id and can be deleted in Settings. The live project now uses private `design-inputs` storage with owner-scoped policies and signed display/export URLs.
 - Budget ranges are planning estimates, not quotes or final designs.
 
+## Production backend privacy
+
+The live SpaceFlip backend is `fslxwcehapelumttwmcf`. It now uses UUID ownership tied to `auth.users`, private `design-inputs` storage, owner-only RLS, and JWT-protected Edge Functions.
+
+For any future fresh SpaceFlip backend, use `SUPABASE_FRESH_PROJECT_SETUP.sql` rather than the older demo-user setup sequence.
+
+The Expo/EAS development, preview, and production build profiles are wired to the live Supabase URL + publishable key. Server-side AI/provider keys remain Supabase Edge Function secrets only.
+
 ## Pre-build checklist
 
-- [ ] GitHub `SpaceFlip CI` passes (`npm run typecheck`, Expo compatibility, both Deno Edge Functions)
-- [ ] Root `.env` contains only `EXPO_PUBLIC_*` values
+- [ ] GitHub `SpaceFlip CI` passes (TypeScript, Expo compatibility, Expo Doctor, critical dependency audit, both Deno Edge Functions)
+- [x] EAS development/preview/production profiles contain only the live public Supabase URL + publishable key
 - [ ] `supabase/.env.local` is gitignored and not tracked
 - [x] Live SpaceFlip Supabase project `fslxwcehapelumttwmcf` is connected and reachable
 - [x] Private `design-inputs` storage + owner-scoped RLS applied to the live project
+- [x] `generation_jobs.user_id` + `design_projects.user_id` use UUID foreign keys to `auth.users`
 - [x] Both Edge Functions deployed with JWT verification enabled
-- [ ] Supabase secrets set for the target project
+- [ ] At least one real AI text provider secret (`GEMINI_API_KEY` or `GROQ_API_KEY`) configured in Supabase (otherwise plan text safely falls back to template generation)
+- [ ] Supabase Anonymous Sign-Ins enabled in Auth settings
 - [ ] App reloaded with `-c` so the device runs the latest bundle

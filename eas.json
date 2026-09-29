@@ -9,16 +9,32 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fslxwcehapelumttwmcf.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_5t409h5Vt1PriBHnk0fglQ_jwMV60KG"
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
-        "simulator": false
+        "simulator": false,
+        "image": "macos-sequoia-15.6-xcode-26.0"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fslxwcehapelumttwmcf.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_5t409h5Vt1PriBHnk0fglQ_jwMV60KG"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "ios": {
+        "image": "macos-sequoia-15.6-xcode-26.0"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fslxwcehapelumttwmcf.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_5t409h5Vt1PriBHnk0fglQ_jwMV60KG"
+      }
     }
   },
   "submit": {

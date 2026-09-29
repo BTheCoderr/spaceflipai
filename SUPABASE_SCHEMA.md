@@ -1,225 +1,96 @@
-# Supabase Schema (Draft)
+# Supabase Schema — Current Production
 
-This document describes the planned Postgres schema for SpaceFlip Pro. **Do not apply until explicitly requested.**
+SpaceFlip Pro currently uses a deliberately small backend:
 
-## Overview
+| Resource | Purpose |
+|---|---|
+| `auth.users` | Anonymous guest workspace identity |
+| `public.generation_jobs` | Property-photo generation requests and generated upgrade-plan data |
+| `public.design_projects` | Saved SpaceFlip projects |
+| `storage.objects` / `design-inputs` | Private property photos and optional generated concept images |
 
-| Table | Purpose |
-|-------|---------|
-| `profiles` | User account metadata and subscription quota |
-| `design_projects` | Saved upgrade projects shown in Projects |
-| `uploaded_photos` | Room photo uploads linked to storage paths |
-| `generation_jobs` | Async design generation job lifecycle |
-| `generated_designs` | Final AI output images linked to jobs |
+The live project is `fslxwcehapelumttwmcf`.
 
----
+## Ownership model
 
-## `profiles`
-
-```sql
-create table public.profiles (
-  id uuid primary key references auth.users (id) on delete cascade,
-  email text,
-  display_name text,
-  plan text not null default 'free' check (plan in ('free', 'pro')),
-  is_pro boolean not null default false,
-  generations_remaining integer not null default 3,
-  generations_used_this_month integer not null default 0,
-  quota_reset_at timestamptz,
-  total_estimated_cost_this_month numeric(10, 4) default 0,
-  trial_available boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-```
-
----
-
-## `design_projects`
+Both application tables use:
 
 ```sql
-create table public.design_projects (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles (id) on delete cascade,
-  title text not null,
-  room_type text,
-  design_style text,
-  tool_id text,
-  thumbnail_url text,
-  input_public_url text,
-  result_image_url text,
-  job_id uuid references public.generation_jobs (id) on delete set null,
-  source text check (source in ('camera', 'gallery', 'demo')),
-  status text not null default 'completed' check (status in ('draft', 'completed', 'archived')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+user_id uuid not null references auth.users(id) on delete cascade
 ```
 
----
+Anonymous Supabase users are authenticated sessions and therefore use the Postgres `authenticated` role. RLS always combines that role with `user_id = (select auth.uid())`.
 
-## `uploaded_photos`
+The unauthenticated `anon` role has no table privileges on SpaceFlip application tables.
 
-```sql
-create table public.uploaded_photos (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles (id) on delete cascade,
-  storage_path text not null,
-  public_url text,
-  mime_type text not null default 'image/jpeg',
-  width integer,
-  height integer,
-  source text check (source in ('camera', 'gallery', 'demo')),
-  created_at timestamptz not null default now()
-);
+## generation_jobs
 
-create index uploaded_photos_user_id_idx on public.uploaded_photos (user_id);
-create index uploaded_photos_storage_path_idx on public.uploaded_photos (storage_path);
-```
+Important fields:
 
-Storage path convention:
+- `id uuid`
+- `user_id uuid` → `auth.users(id)`
+- project intake: `project_type`, `goal`, `budget_range`, `notes`
+- photo references: `input_image_uri`, `input_storage_path`, `input_public_url`
+- result: `result_image_url`, `result_payload`
+- plan metadata: `plan_source`, `ai_provider`, `estimated_cost_cents`
+- concept-image metadata: `concept_image_url`, `image_provider`, `image_generation_status`, `image_generation_error`, `estimated_image_cost_cents`
+- lifecycle: `status`, `error_message`, timestamps
 
-```
-users/{userId}/inputs/{timestamp}-{fileName}
-```
+Indexes cover user ownership, status, and user/date queries.
+
+## design_projects
+
+Important fields:
+
+- `id uuid`
+- `user_id uuid` → `auth.users(id)`
+- `generation_job_id uuid` → `generation_jobs(id)`
+- intake/result fields used by the saved-project experience
+- `checklist jsonb`
+- `budget_items jsonb`
+- `plan_summary`
+- `contractor_notes`
+- timestamps
+
+The insert/update RLS policy also checks that any referenced `generation_job_id` belongs to the same authenticated user.
+
+## Storage
 
 Bucket: `design-inputs`
 
----
+Production state:
 
-## `generation_jobs`
+- private bucket
+- no broad anonymous read access
+- owner-scoped INSERT / SELECT / UPDATE / DELETE policies
+- path convention: `users/{auth.uid()}/inputs/...`
+- generated concepts, when enabled: `users/{auth.uid()}/outputs/{jobId}/concept.png`
+- persisted rows keep stable storage references
+- display, PDF export, and AI-provider access resolve private files through short-lived signed URLs
 
-```sql
-create type public.generation_job_status as enum (
-  'queued',
-  'uploading',
-  'processing',
-  'completed',
-  'failed'
-);
+## Edge Functions
 
-create table public.generation_jobs (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles (id) on delete cascade,
-  tool_id text not null,
-  style_id text,
-  input_image_uri text,
-  input_storage_path text,
-  input_public_url text,
-  result_image_url text,
-  status public.generation_job_status not null default 'queued',
-  source text check (source in ('camera', 'gallery', 'demo')),
-  error_message text,
-  estimated_cost_cents integer default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+### generate-upgrade-plan
 
-create index generation_jobs_user_id_idx on public.generation_jobs (user_id);
-create index generation_jobs_status_idx on public.generation_jobs (status);
-```
+- requires a valid JWT
+- derives identity from the JWT, never from a client-supplied user id
+- verifies that the requested generation job belongs to the caller
+- generates structured plan text through Gemini or Groq when configured
+- falls back to deterministic template plan text if providers are unavailable
+- concept image generation is wired but disabled by default
 
----
+### delete-user-workspace
 
-## `generated_designs`
+- requires a valid JWT
+- deletes only the authenticated user's projects, jobs, and storage objects
+- removes the anonymous Auth user as a best-effort final step
 
-```sql
-create table public.generated_designs (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles (id) on delete cascade,
-  project_id uuid references public.design_projects (id) on delete set null,
-  job_id uuid not null references public.generation_jobs (id) on delete cascade,
-  image_url text not null,
-  storage_path text,
-  prompt text,
-  room_type text,
-  design_style text,
-  created_at timestamptz not null default now()
-);
+## Setup files
 
-create index generated_designs_job_id_idx on public.generated_designs (job_id);
-```
+For a brand-new backend, use:
 
----
+`SUPABASE_FRESH_PROJECT_SETUP.sql`
 
-## Row Level Security (RLS)
+The older `SUPABASE_DATABASE_SETUP.sql`, `SUPABASE_AUTH_MIGRATION.sql`, and `SUPABASE_PRIVATE_STORAGE_MIGRATION.sql` files are retained only for legacy upgrade paths.
 
-Enable RLS on all tables:
-
-```sql
-alter table public.profiles enable row level security;
-alter table public.design_projects enable row level security;
-alter table public.uploaded_photos enable row level security;
-alter table public.generation_jobs enable row level security;
-alter table public.generated_designs enable row level security;
-```
-
-### Policy pattern
-
-Users may only read and write their own rows:
-
-```sql
--- Example for generation_jobs
-create policy "Users read own jobs"
-  on public.generation_jobs for select
-  using (auth.uid() = user_id);
-
-create policy "Users insert own jobs"
-  on public.generation_jobs for insert
-  with check (auth.uid() = user_id);
-
-create policy "Users update own jobs"
-  on public.generation_jobs for update
-  using (auth.uid() = user_id);
-```
-
-Apply the same `auth.uid() = user_id` pattern to all user-owned tables.
-
----
-
-## Storage RLS notes
-
-- Storage paths must be scoped by user id: `users/{userId}/inputs/...`
-- Prefer **private buckets** with signed URLs for production user uploads
-- For MVP demo mode, a **public** `design-inputs` bucket is acceptable for testing only
-- Never expose service role keys in the mobile app — use anon key + RLS
-- AI provider keys belong in Edge Function secrets only
-
----
-
-## Storage bucket policies (draft)
-
-```sql
--- Allow authenticated users to upload to their own folder
-create policy "Users upload own inputs"
-  on storage.objects for insert
-  with check (
-    bucket_id = 'design-inputs'
-    and (storage.foldername(name))[1] = 'users'
-    and (storage.foldername(name))[2] = auth.uid()::text
-  );
-
-create policy "Users read own inputs"
-  on storage.objects for select
-  using (
-    bucket_id = 'design-inputs'
-    and (storage.foldername(name))[1] = 'users'
-    and (storage.foldername(name))[2] = auth.uid()::text
-  );
-```
-
-For demo mode without auth, use a public bucket temporarily and migrate to private + signed URLs before production.
-
----
-
-## Future Edge Function
-
-`create-generation-job` will:
-
-1. Validate user quota
-2. Insert `generation_jobs` row
-3. Invoke AI provider (OpenAI / Replicate / Stability) server-side
-4. Upload result to storage
-5. Update job status to `completed` or `failed`
-
-The mobile app should never call AI providers directly.
+Never place service-role or AI-provider secrets in the Expo app.
