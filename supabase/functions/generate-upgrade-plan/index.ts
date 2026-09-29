@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { generateUpgradePlanText } from '../_shared/aiProvider.ts';
 import { buildUpgradePrompt } from '../_shared/promptBuilder.ts';
 import { generateConceptImage, isImageGenerationEnabled } from '../_shared/imageProvider.ts';
@@ -30,7 +30,7 @@ type ConceptImageOutcome = {
  * a stock/mock image — with concept_image_url null.
  */
 async function maybeGenerateConceptImage(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   record: GenerationJobRecord,
   jobId: string,
   originalImageUrl: string,
@@ -143,7 +143,7 @@ function jsonResponse(body: GenerateUpgradePlanResponse, status = 200): Response
  * Returns null for anon-key requests or invalid tokens. Never logs the token.
  */
 async function getAuthenticatedUserId(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any>,
   authHeader: string | null
 ): Promise<string | null> {
   if (!authHeader) return null;
