@@ -84,13 +84,25 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
           if (result.userId) {
             setSupabaseUserId(result.userId);
             setIsAnonymous(result.isAnonymous);
+          } else {
+            // Production builds with Supabase configured should never silently
+            // continue with a display profile but no authenticated workspace.
+            setProfile(null);
+            setSupabaseUserId(null);
+            setIsAnonymous(false);
           }
         } else if (session?.user) {
           setSupabaseUserId(session.user.id);
           setIsAnonymous(session.user.is_anonymous ?? false);
         }
       } catch {
-        // Treat unreadable storage as a fresh install.
+        // If backend/session restoration fails in a configured production build,
+        // route back through login instead of pretending the workspace is ready.
+        if (hasSupabaseConfig()) {
+          setProfile(null);
+          setSupabaseUserId(null);
+          setIsAnonymous(false);
+        }
       } finally {
         if (active) setReady(true);
       }
@@ -116,6 +128,13 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       const result = await signInAnonymouslyIfNeeded();
       setSupabaseUserId(result.userId);
       setIsAnonymous(result.isAnonymous);
+
+      if (hasSupabaseConfig() && !result.userId) {
+        // Fail closed when a real backend is configured. Local/mock mode remains
+        // available only for development builds with no Supabase env configured.
+        setProfile(null);
+        return { backendReady: false, error: result.error ?? 'workspace_unavailable' };
+      }
 
       const next: LocalProfile = {
         name: input.name?.trim() || 'SpaceFlip User',
