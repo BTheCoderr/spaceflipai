@@ -56,7 +56,7 @@ The Edge Function redacts secrets from logs and falls back to a mock plan if all
 5. **Save Project** → appears under **Saved Projects** in the Projects tab.
 6. **Saved Project → detail** → shows plan source/provider, "Property Photo" badge, planning disclaimer, working Export.
 7. **Delete Project** → confirmation dialog before deleting.
-8. **Project Guides → tap a guide** → guide screen (intro, plan prompts, "Start a Visualize Plan"). No chat.
+8. **Project Guides → tap a guide** → guide screen (intro, plan prompts, "Start a New Plan"). No chat.
 9. **Settings** → no free-trial / subscription language.
 
 ## Clearing Expo cache
@@ -126,7 +126,7 @@ npm run build:android:preview
   uploaded **Property Photo**; no stock/mock concept image is shown.
 - **Payments / subscription**: none. No RevenueCat, no paywall purchases; the Paywall route
   is removed from the navigation stack.
-- **Project Guides** route into the Visualize/intake flow; there is no chat.
+- **Project Guides** route into the New Plan/intake flow; there is no chat.
 - Some legacy screens (style transfer, painting, tools) are not in the tab navigation.
 
 ## Known limitations
