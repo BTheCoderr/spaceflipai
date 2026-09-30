@@ -34,12 +34,12 @@ export default function AdvisorDetailScreen() {
   const recommendedType = advisor.recommendedProjectTypes[0];
   const recommendedLabel = getProjectTypeById(recommendedType)?.label ?? 'a plan';
 
-  // Both CTAs route into the existing, working Visualize/Groq pipeline.
+  // Both CTAs route into the existing plan-generation pipeline.
   const startRecommendedPlan = () => {
     router.push(`/project-intake/${recommendedType}`);
   };
 
-  const openVisualizePicker = () => {
+  const openPlanPicker = () => {
     router.push('/(tabs)/visualize');
   };
 
@@ -115,14 +115,14 @@ export default function AdvisorDetailScreen() {
           style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}
           onPress={startRecommendedPlan}
         >
-          <Ionicons name="scan-outline" size={18} color="#FFFFFF" />
+          <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
           <Text style={styles.primaryBtnText}>{advisor.ctaLabel}</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
-          onPress={openVisualizePicker}
+          onPress={openPlanPicker}
         >
-          <Text style={styles.secondaryBtnText}>Start a Visualize Plan</Text>
+          <Text style={styles.secondaryBtnText}>Choose another plan type</Text>
         </Pressable>
         <Text style={styles.footerHint}>Recommended: {recommendedLabel}</Text>
       </View>
