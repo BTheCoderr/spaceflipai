@@ -74,7 +74,7 @@ rm -rf .expo node_modules/.cache && npx expo start -c
 EAS profiles are defined in `eas.json`:
 - **development** — internal distribution + dev client (`expo-dev-client`); install on a device and connect to the Metro dev server.
 - **preview** — internal distribution standalone build (TestFlight-style internal testing, no Metro needed).
-- **production** — App Store build later (auto-increments build number).
+- **production** — App Store build later. EAS stores the developer-facing build number remotely and auto-increments it for each production build.
 
 ### Exact commands
 
@@ -102,9 +102,11 @@ npm run build:android:preview
 ```
 
 ### App identifiers (in `app.json`)
-- iOS `bundleIdentifier`: `com.spaceflip.pro` (buildNumber `3`)
-- Android `package`: `com.spaceflip.pro` (versionCode `1`)
-- version `1.0.0`
+- iOS `bundleIdentifier`: `com.spaceflip.pro`
+- Android `package`: `com.spaceflip.pro`
+- user-facing version: `1.0.0`
+- local seed values: iOS build `3`, Android versionCode `1`
+- production developer-facing build numbers: managed remotely by EAS and auto-incremented
 
 ### TestFlight requirements
 - A paid **Apple Developer Program** account.
@@ -144,7 +146,7 @@ The Expo/EAS development, preview, and production build profiles are wired to th
 
 ## Pre-build checklist
 
-- [ ] GitHub `SpaceFlip CI` passes (TypeScript, Expo compatibility, Expo Doctor, critical dependency audit, both Deno Edge Functions)
+- [ ] GitHub `SpaceFlip CI` passes (TypeScript, release identity consistency, Expo compatibility, Expo Doctor, critical dependency audit, marketing build, both Deno Edge Functions)
 - [x] EAS development/preview/production profiles contain only the live public Supabase URL + publishable key
 - [ ] `supabase/.env.local` is gitignored and not tracked
 - [x] Live SpaceFlip Supabase project `fslxwcehapelumttwmcf` is connected and reachable
@@ -154,3 +156,13 @@ The Expo/EAS development, preview, and production build profiles are wired to th
 - [ ] At least one real AI text provider secret (`GEMINI_API_KEY` or `GROQ_API_KEY`) configured in Supabase (otherwise plan text safely falls back to template generation)
 - [ ] Supabase Anonymous Sign-Ins enabled in Auth settings
 - [ ] App reloaded with `-c` so the device runs the latest bundle
+
+
+## Release versioning guard
+
+SpaceFlip uses two different version concepts:
+
+- `expo.version` / `package.json version` = the user-facing release version, updated deliberately for public releases.
+- iOS `buildNumber` / Android `versionCode` = developer-facing build identifiers, managed remotely by EAS and auto-incremented for production builds.
+
+Run `npm run release:check` before a release. CI runs the same check automatically and fails if the app name, version, bundle/package ID, EAS project, live Supabase target, publishable-key alignment, encryption declaration, or App Store submission-pack version drift apart.

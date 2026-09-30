@@ -29,6 +29,9 @@ jobs:
       - name: TypeScript
         run: npm run typecheck
 
+      - name: Release identity consistency
+        run: npm run release:check
+
       - name: Expo dependency compatibility
         run: npx expo install --check
 
