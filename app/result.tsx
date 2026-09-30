@@ -23,6 +23,7 @@ import {
   buildResultPlanViewModel,
   getResultDisplayImageUrl,
 } from '../src/lib/resultPlanData';
+import { regenerateConceptImage, AiGenerationError } from '../src/lib/aiGeneration';
 import { colors, interaction, radius, spacing, typography } from '../src/constants/theme';
 
 type ResultTab = 'visual' | 'plan' | 'budget' | 'checklist';
@@ -53,7 +54,7 @@ export default function ResultScreen() {
     uploadedInputPublicUrl,
     selectedGoal,
     selectedBudgetRange,
-    cycleMockResult,
+    completeCurrentJobMock,
     saveCurrentProject,
     savedProjectsError,
   } = useGenerationStore();
@@ -110,11 +111,29 @@ export default function ResultScreen() {
   };
 
   const handleRegenerate = async () => {
-    if (regenerating) return;
+    if (regenerating || !params.jobId) return;
     setRegenerating(true);
-    await new Promise((r) => setTimeout(r, 800));
-    cycleMockResult([...viewModel.resultUrls]);
-    setRegenerating(false);
+    try {
+      const result = await regenerateConceptImage(params.jobId);
+      await completeCurrentJobMock(result.resultImageUrl, 0, {
+        resultPayload: result.resultPayload,
+        planSource: result.planSource,
+        aiProvider: result.aiProvider,
+        usedFallback: false,
+        imageProvider: result.imageProvider,
+        conceptImageGenerated: result.conceptImageGenerated,
+      });
+      setShowBefore(false);
+    } catch (error) {
+      Alert.alert(
+        'Could not create another concept',
+        error instanceof AiGenerationError
+          ? error.message
+          : "Couldn't generate another concept. Please try again."
+      );
+    } finally {
+      setRegenerating(false);
+    }
   };
 
   const handleSave = async () => {
@@ -330,9 +349,11 @@ export default function ResultScreen() {
           style={({ pressed }) => [styles.regenerateBtn, pressed && styles.pressed]}
           onPress={handleRegenerate}
           disabled={regenerating}
+          accessibilityRole="button"
+          accessibilityLabel="Generate another AI concept for this property"
         >
           <Text style={styles.regenerateText}>
-            {regenerating ? 'Refreshing concept…' : 'Try another concept'}
+            {regenerating ? 'Generating another concept…' : 'Try another concept'}
           </Text>
         </Pressable>
       ) : null}
