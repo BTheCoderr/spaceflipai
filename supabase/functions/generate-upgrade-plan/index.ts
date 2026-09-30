@@ -136,10 +136,12 @@ async function maybeGenerateConceptImage(
     };
   }
 
-  const { data: pub } = supabase.storage.from(DESIGN_INPUTS_BUCKET).getPublicUrl(path);
+  // Persist the stable private Storage path instead of an expiring signed URL.
+  // The mobile client resolves this canonical path through createSignedUrl()
+  // whenever it renders or exports the concept image.
   return {
-    resultImageUrl: pub.publicUrl,
-    conceptImageUrl: pub.publicUrl,
+    resultImageUrl: path,
+    conceptImageUrl: path,
     imageProvider: concept.provider,
     imageGenerationStatus: 'completed',
     imageGenerationError: null,
