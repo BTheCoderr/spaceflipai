@@ -31,6 +31,8 @@ export function ScreenHeader({ title, variant = 'back', onPress }: Props) {
         onPress={handlePress}
         hitSlop={interaction.hitSlop}
         style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={variant === 'close' ? `Close ${title || 'screen'}` : `Back from ${title || 'screen'}`}
       >
         <Ionicons name={icon} size={26} color={colors.text} />
       </Pressable>
