@@ -22,14 +22,14 @@ A user photographs (or selects) a property/space, chooses a project type and goa
 Important honesty notes for review:
 - Plans are **AI-generated planning drafts**, not professional construction documents.
 - This build does **not** generate AI design/concept images. The Visual tab and the exported PDF show the user's **own original property photo**, labeled "Property Photo." There is **no mock, stock, or fake generated imagery** anywhere in the review build.
-- **Project Guides** (in the "Guides" tab) are not a chatbot. Each guide routes the user into the real Visualize/intake flow to generate a plan.
+- **Project Guides** (in the "Guides" tab) are not a chatbot. Each guide routes the user into the real New Plan/intake flow to generate a plan.
 - There are **no subscriptions, payments, or in-app purchases**, and no paywall is reachable.
 
 ## How to test the main features (guest mode — no login required)
 
 1. Launch the app → onboarding slides appear.
 2. Tap **Continue as guest**. This silently creates a private, anonymous Supabase workspace (no email/password required).
-3. Go to **Visualize** → pick a project type (e.g., "Airbnb / short-term rental").
+3. Go to **New Plan** → pick a project type (e.g., "Airbnb / short-term rental").
 4. Fill in the goal/budget intake.
 5. **Select a photo** from the photo library, or use a built-in **example photo**, or take one with the camera.
 6. Tap **Continue** → the app builds an upgrade plan.
