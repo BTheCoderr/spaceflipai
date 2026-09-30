@@ -184,16 +184,19 @@ async function generateWithGemini(
   }
 
   const interaction = await res.json();
-  const imagePart = Array.isArray(interaction?.steps)
-    ? interaction.steps
-        .flatMap((step: { content?: unknown[] }) =>
-          Array.isArray(step?.content) ? step.content : []
-        )
-        .find(
-          (part: { type?: string; data?: unknown }) =>
-            part?.type === 'image' && typeof part?.data === 'string'
-        )
-    : undefined;
+  type GeminiImagePart = {
+    type?: string;
+    data?: unknown;
+    mime_type?: unknown;
+  };
+  const outputParts: GeminiImagePart[] = Array.isArray(interaction?.steps)
+    ? interaction.steps.flatMap((step: { content?: unknown[] }) =>
+        Array.isArray(step?.content) ? (step.content as GeminiImagePart[]) : []
+      )
+    : [];
+  const imagePart = outputParts.find(
+    (part) => part?.type === 'image' && typeof part?.data === 'string'
+  );
 
   if (!imagePart?.data) {
     console.warn('[imageProvider] Gemini returned no image output');
