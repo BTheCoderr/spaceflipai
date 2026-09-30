@@ -5,6 +5,7 @@ import { generateConceptImage, isImageGenerationEnabled } from '../_shared/image
 import type {
   GenerateUpgradePlanRequest,
   GenerateUpgradePlanResponse,
+  GenerateUpgradePlanTextResult,
   GenerationJobRecord,
 } from '../_shared/types.ts';
 
@@ -15,6 +16,11 @@ function maxImagesPerUserPerDay(): number {
   return Number.isFinite(raw) && raw > 0 ? raw : 5;
 }
 
+function maxImagesPerJob(): number {
+  const raw = Number(Deno.env.get('MAX_IMAGE_GENERATIONS_PER_JOB') ?? '3');
+  return Number.isFinite(raw) && raw > 0 ? raw : 3;
+}
+
 type ConceptImageOutcome = {
   resultImageUrl: string;
   conceptImageUrl: string | null;
@@ -22,6 +28,7 @@ type ConceptImageOutcome = {
   imageGenerationStatus: string;
   imageGenerationError: string | null;
   estimatedImageCostCents: number;
+  imageGenerationCount: number;
 };
 
 async function resolveProviderInputImageUrl(
@@ -60,6 +67,8 @@ async function maybeGenerateConceptImage(
   providerInputImageUrl: string,
   planSummary: string | null
 ): Promise<ConceptImageOutcome> {
+  const currentGenerationCount = Math.max(0, Number(record.image_generation_count ?? 0));
+
   // Default (no real concept image): show the original property photo.
   const fallback: ConceptImageOutcome = {
     resultImageUrl: originalImageUrl,
@@ -68,7 +77,12 @@ async function maybeGenerateConceptImage(
     imageGenerationStatus: 'not_generated',
     imageGenerationError: null,
     estimatedImageCostCents: 0,
+    imageGenerationCount: currentGenerationCount,
   };
+
+  if (currentGenerationCount >= maxImagesPerJob()) {
+    return { ...fallback, imageGenerationStatus: 'skipped_job_limit' };
+  }
 
   if (!isImageGenerationEnabled()) {
     return { ...fallback, imageGenerationStatus: 'disabled' };
@@ -101,6 +115,7 @@ async function maybeGenerateConceptImage(
     notes: record.notes,
     planSummary,
     inputImageUrl,
+    variationIndex: currentGenerationCount,
   });
 
   if (concept.status === 'disabled') {
@@ -119,8 +134,9 @@ async function maybeGenerateConceptImage(
     };
   }
 
-  // Store the generated concept under users/{uid}/outputs/{jobId}/concept.png
-  const path = `users/${record.user_id}/outputs/${jobId}/concept.png`;
+  const nextGenerationCount = currentGenerationCount + 1;
+  // Each concept gets its own path so the mobile image cache sees a new URI.
+  const path = `users/${record.user_id}/outputs/${jobId}/concept-${nextGenerationCount}.png`;
   const { error: uploadError } = await supabase.storage
     .from(DESIGN_INPUTS_BUCKET)
     .upload(path, concept.bytes, { contentType: concept.contentType, upsert: true });
@@ -146,6 +162,7 @@ async function maybeGenerateConceptImage(
     imageGenerationStatus: 'completed',
     imageGenerationError: null,
     estimatedImageCostCents: concept.costCents,
+    imageGenerationCount: nextGenerationCount,
   };
 }
 
@@ -210,6 +227,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const jobId = body.jobId?.trim();
+  const regenerateImage = body.regenerateImage === true;
 
   if (!jobId) {
     return jsonResponse({ ok: false, error: 'jobId is required' }, 400);
@@ -261,14 +279,28 @@ Deno.serve(async (req: Request) => {
     const originalImageUrl = record.input_public_url ?? record.input_image_uri ?? '';
     const providerInputImageUrl = await resolveProviderInputImageUrl(supabase, record);
 
-    const planResult = await generateUpgradePlanText({
-      projectType: record.project_type,
-      goal: record.goal,
-      budgetRange: record.budget_range,
-      notes: record.notes,
-      inputPublicUrl: providerInputImageUrl,
-      prompt,
-    });
+    let planResult: GenerateUpgradePlanTextResult;
+    if (regenerateImage && record.result_payload) {
+      const provider =
+        record.ai_provider === 'gemini' || record.ai_provider === 'groq'
+          ? record.ai_provider
+          : 'mock';
+      planResult = {
+        payload: record.result_payload,
+        source: record.plan_source === 'ai' ? 'ai' : 'mock',
+        provider,
+        estimatedCostCents: record.estimated_cost_cents ?? 0,
+      };
+    } else {
+      planResult = await generateUpgradePlanText({
+        projectType: record.project_type,
+        goal: record.goal,
+        budgetRange: record.budget_range,
+        notes: record.notes,
+        inputPublicUrl: providerInputImageUrl,
+        prompt,
+      });
+    }
 
     if (planResult.source === 'mock') {
       if (!Deno.env.get('GEMINI_API_KEY') && !Deno.env.get('GROQ_API_KEY')) {
@@ -289,6 +321,29 @@ Deno.serve(async (req: Request) => {
       planResult.payload?.upgradeSummary ?? null
     );
 
+    if (regenerateImage && image.imageGenerationStatus !== 'completed') {
+      await supabase
+        .from('generation_jobs')
+        .update({ status: 'completed' })
+        .eq('id', jobId);
+
+      const message =
+        image.imageGenerationStatus === 'skipped_job_limit'
+          ? 'Concept limit reached for this project'
+          : 'Could not generate another concept';
+
+      return jsonResponse(
+        {
+          ok: false,
+          jobId,
+          imageGenerationStatus: image.imageGenerationStatus,
+          imageGenerationCount: image.imageGenerationCount,
+          error: message,
+        },
+        422
+      );
+    }
+
     const { error: completeError } = await supabase
       .from('generation_jobs')
       .update({
@@ -303,6 +358,7 @@ Deno.serve(async (req: Request) => {
         image_generation_status: image.imageGenerationStatus,
         image_generation_error: image.imageGenerationError,
         estimated_image_cost_cents: image.estimatedImageCostCents,
+        image_generation_count: image.imageGenerationCount,
         error_message: null,
       })
       .eq('id', jobId);
@@ -327,6 +383,7 @@ Deno.serve(async (req: Request) => {
       imageProvider: image.imageProvider,
       imageGenerationStatus: image.imageGenerationStatus,
       estimatedImageCostCents: image.estimatedImageCostCents,
+      imageGenerationCount: image.imageGenerationCount,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Generation failed';
