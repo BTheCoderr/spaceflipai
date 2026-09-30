@@ -7,7 +7,7 @@ This document covers how to run, test, and build SpaceFlip Pro for a private dem
 Property photo → AI upgrade plan → budget range + materials + priority checklist → client-ready PDF → save as a project.
 
 - **AI plan text:** Generated server-side via a Supabase Edge Function (Groq today; Gemini supported as a provider). Returns structured JSON.
-- **Concept image:** Real image generation is wired but **disabled for the App Store build by default**. When disabled, SpaceFlip shows the user's original **Property Photo** — never a stock/mock image.
+- **Concept image:** Real image editing is implemented with Gemini (preferred), Replicate FLUX Kontext Pro, or Stability, but remains **feature-gated until live visual QA**. When disabled, SpaceFlip shows the user's original **Property Photo** — never a stock/mock image.
 - **PDF export:** Real, via `expo-print` + `expo-sharing`.
 - **Persistence:** Supabase (`generation_jobs`, `design_projects`) for configured builds. Local in-memory behavior is development-only when Supabase env vars are intentionally absent; configured builds fail closed if a secure guest workspace cannot start.
 
@@ -114,16 +114,14 @@ npm run build:android:preview
 - A signed iOS build (EAS manages credentials), then `npx eas submit --platform ios` (do this manually — not automated here).
 
 ### Important caveats for this build
-- **No AI concept/visual image generation** — the Visual tab and PDF show the user's own
-  uploaded **Property Photo**. There is no stock/mock/fake generated imagery.
+- **AI concept-image code is present but gated** — until `IMAGE_GENERATION_ENABLED=true` is set and the live visual QA passes, the Visual tab and PDF show the user's own uploaded **Property Photo**. There is no stock/mock/fake generated imagery.
 - **Payments are not active** — no RevenueCat, no subscriptions; there is no Paywall route in the app.
 - **Auth** uses anonymous Supabase guest sign-in (Guest Workspace), not a fixed demo user id. Both production Edge Functions require a valid user JWT.
 - Expo Go cannot show the custom icon/splash; use a dev/preview build to verify them.
 
 ## Not in this build (internal notes)
 
-- **Real AI concept image generation** is wired but OFF. The Visual tab shows the user's
-  uploaded **Property Photo**; no stock/mock concept image is shown.
+- **Real AI concept image generation** supports Gemini / Replicate / Stability but is OFF until the live provider path is enabled and visually tested. The Visual tab otherwise shows the user's uploaded **Property Photo**; no stock/mock concept image is shown.
 - **Payments / subscription**: none. No RevenueCat, no paywall purchases; the Paywall route
   is removed from the navigation stack.
 - **Project Guides** route into the New Plan/intake flow; there is no chat.
@@ -154,6 +152,7 @@ The Expo/EAS development, preview, and production build profiles are wired to th
 - [x] `generation_jobs.user_id` + `design_projects.user_id` use UUID foreign keys to `auth.users`
 - [x] Both Edge Functions deployed with JWT verification enabled
 - [ ] At least one real AI text provider secret (`GEMINI_API_KEY` or `GROQ_API_KEY`) configured in Supabase (otherwise plan text safely falls back to template generation)
+- [ ] For generated visual concepts: `IMAGE_GENERATION_ENABLED=true` plus a supported image provider. Gemini can reuse `GEMINI_API_KEY`; no separate image-provider key is required.
 - [ ] Supabase Anonymous Sign-Ins enabled in Auth settings
 - [ ] App reloaded with `-c` so the device runs the latest bundle
 
