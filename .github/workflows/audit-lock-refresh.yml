@@ -1,0 +1,48 @@
+name: SpaceFlip Audit Lock Refresh
+
+on:
+  push:
+    branches:
+      - chore/audit-lock-refresh
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.event.head_commit.message != 'chore: refresh audit lockfiles [audit-lock-refresh]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: chore/audit-lock-refresh
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.4'
+          cache: npm
+
+      - name: Refresh root lockfile with non-breaking audit fixes
+        run: npm audit fix --package-lock-only || true
+
+      - name: Refresh marketing lockfile with non-breaking audit fixes
+        run: npm --prefix marketing audit fix --package-lock-only || true
+
+      - name: Verify lockfiles install
+        run: |
+          npm ci
+          npm --prefix marketing ci
+
+      - name: Commit refreshed lockfiles
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json marketing/package-lock.json
+          if git diff --cached --quiet; then
+            echo "No lockfile changes needed."
+          else
+            git commit -m "chore: refresh audit lockfiles [audit-lock-refresh]"
+            git push origin HEAD:chore/audit-lock-refresh
+          fi
