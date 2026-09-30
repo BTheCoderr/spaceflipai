@@ -7,7 +7,7 @@ Use this as the copy/paste source for the iOS 1.0 submission.
 - **Name:** SpaceFlip Pro
 - **Bundle ID:** `com.spaceflip.pro`
 - **Version:** `1.0.0`
-- **Current iOS build number:** `3`
+- **Production build number:** managed remotely by EAS and auto-incremented. Record the exact TestFlight build selected for review before submission.
 - **Suggested primary category:** Business
 - **Suggested secondary category:** Productivity
 
