@@ -102,7 +102,7 @@ Use **Continue as guest**. The app silently creates an anonymous Supabase guest 
 1. Launch SpaceFlip Pro.
 2. Complete onboarding.
 3. Tap **Continue as guest**.
-4. Open **Visualize**.
+4. Open **New Plan**.
 5. Choose a project type.
 6. Enter a goal and budget.
 7. Select a property photo, use a bundled example photo, or take a photo.
