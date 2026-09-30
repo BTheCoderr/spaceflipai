@@ -74,7 +74,7 @@ export function PhotoUploadSection({
         </View>
       </View>
 
-      <Text style={styles.demoLabel}>Example Property Photos</Text>
+      <Text style={styles.demoLabel}>Try an example property photo</Text>
       <ExamplePhotoCarousel
         photos={examplePhotos}
         selectedId={selectedExampleId}
