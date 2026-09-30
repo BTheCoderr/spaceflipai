@@ -59,6 +59,8 @@ create table if not exists public.generation_jobs (
   image_generation_status text not null default 'not_started',
   image_generation_error text,
   estimated_image_cost_cents integer not null default 0,
+  image_generation_count integer not null default 0
+    check (image_generation_count >= 0),
   error_message text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

@@ -36,6 +36,7 @@ export type GenerationJob = {
   conceptImageUrl?: string;
   imageProvider?: string;
   imageGenerationStatus?: string;
+  imageGenerationCount?: number;
 };
 
 export type GenerationJobError = {
@@ -69,6 +70,7 @@ type GenerationJobRow = {
   concept_image_url?: string | null;
   image_provider?: string | null;
   image_generation_status?: string | null;
+  image_generation_count?: number | null;
   error_message: string | null;
   created_at: string;
   updated_at: string;
@@ -138,6 +140,7 @@ function rowToGenerationJob(row: GenerationJobRow): GenerationJob {
     conceptImageUrl: row.concept_image_url ?? undefined,
     imageProvider: row.image_provider ?? undefined,
     imageGenerationStatus: row.image_generation_status ?? undefined,
+    imageGenerationCount: row.image_generation_count ?? undefined,
   };
 }
 
@@ -424,6 +427,15 @@ export async function getGenerationJob(jobId: string): Promise<GenerationJob | n
   }
 
   return null;
+}
+
+/** Force-refreshes a job from Supabase after an Edge Function mutates it. */
+export async function refreshGenerationJob(jobId: string): Promise<GenerationJob | null> {
+  if (!hasSupabaseConfig()) {
+    const cached = jobs.get(jobId);
+    return cached ? { ...cached } : null;
+  }
+  return getGenerationJobSupabase(jobId);
 }
 
 async function listGenerationJobsSupabase(userId: string): Promise<GenerationJob[]> {

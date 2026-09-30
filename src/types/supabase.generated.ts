@@ -96,6 +96,7 @@ export type Database = {
           estimated_image_cost_cents: number
           goal: string | null
           id: string
+          image_generation_count: number
           image_generation_error: string | null
           image_generation_status: string
           image_provider: string
@@ -122,6 +123,7 @@ export type Database = {
           estimated_image_cost_cents?: number
           goal?: string | null
           id?: string
+          image_generation_count?: number
           image_generation_error?: string | null
           image_generation_status?: string
           image_provider?: string
@@ -148,6 +150,7 @@ export type Database = {
           estimated_image_cost_cents?: number
           goal?: string | null
           id?: string
+          image_generation_count?: number
           image_generation_error?: string | null
           image_generation_status?: string
           image_provider?: string

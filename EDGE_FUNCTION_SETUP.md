@@ -344,8 +344,9 @@ unset STABILITY_API_KEY
 ```bash
 supabase secrets set IMAGE_GENERATION_ENABLED=true --project-ref fslxwcehapelumttwmcf
 supabase secrets set IMAGE_GENERATION_PROVIDER=gemini --project-ref fslxwcehapelumttwmcf
-# optional soft cost guard (default 5):
+# optional cost guards:
 supabase secrets set MAX_IMAGE_GENERATIONS_PER_USER_PER_DAY=5 --project-ref fslxwcehapelumttwmcf
+supabase secrets set MAX_IMAGE_GENERATIONS_PER_JOB=3 --project-ref fslxwcehapelumttwmcf
 ```
 
 Redeploy the function (or paste `dashboard-single-file.ts`, version `phase18-image-v1`).
@@ -364,9 +365,11 @@ Redeploy the function (or paste `dashboard-single-file.ts`, version `phase18-ima
 
 ### Cost guards
 
-- One real image per generation job.
-- `MAX_IMAGE_GENERATIONS_PER_USER_PER_DAY` (default 5) — counted from completed image jobs.
-- `estimated_image_cost_cents` recorded per job (about 4¢ for the default Gemini Flash Lite 1K edit, ~4¢ for FLUX Kontext; provider pricing can change).
+- Initial concept + real **Try another concept** regenerations share the same server-side limits.
+- `MAX_IMAGE_GENERATIONS_PER_JOB` defaults to 3 total concepts for one project.
+- `MAX_IMAGE_GENERATIONS_PER_USER_PER_DAY` defaults to 5 total concept images and counts regenerations too.
+- Each regenerated concept gets a unique private Storage path so the app does not show a cached prior image.
+- `estimated_image_cost_cents` records the latest image estimate; `image_generation_count` tracks actual successful concepts.
 
 ### Labels
 

@@ -22,6 +22,7 @@ export type GenerationJobRecord = {
   image_generation_status?: string | null;
   image_generation_error?: string | null;
   estimated_image_cost_cents?: number | null;
+  image_generation_count?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -59,6 +60,7 @@ export type GenerateUpgradePlanTextResult = {
 
 export type GenerateUpgradePlanRequest = {
   jobId: string;
+  regenerateImage?: boolean;
 };
 
 export type GenerateUpgradePlanResponse = {
@@ -75,5 +77,6 @@ export type GenerateUpgradePlanResponse = {
   imageProvider?: string;
   imageGenerationStatus?: string;
   estimatedImageCostCents?: number;
+  imageGenerationCount?: number;
   error?: string;
 };

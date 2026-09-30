@@ -24,6 +24,10 @@ alter table public.generation_jobs
 alter table public.generation_jobs
   add column if not exists estimated_image_cost_cents integer not null default 0;
 
+alter table public.generation_jobs
+  add column if not exists image_generation_count integer not null default 0
+  check (image_generation_count >= 0);
+
 -- Optional helper index for the per-user-per-day cost guard.
 create index if not exists generation_jobs_user_created_idx
   on public.generation_jobs (user_id, created_at desc);
@@ -35,6 +39,7 @@ create index if not exists generation_jobs_user_created_idx
 --   where table_schema = 'public' and table_name = 'generation_jobs'
 --     and column_name in (
 --       'concept_image_url','image_provider','image_generation_status',
---       'image_generation_error','estimated_image_cost_cents'
+--       'image_generation_error','estimated_image_cost_cents',
+      'image_generation_count'
 --     );
 -- ---------------------------------------------------------------------------
