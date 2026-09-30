@@ -6,6 +6,28 @@
 **What it demonstrates:** Expo/React Native · TypeScript · Supabase Auth/Postgres/Storage/RLS · Edge Functions · AI-provider fallbacks · private media handling.
 <!-- repo-intro:end -->
 
+<!-- portfolio-refresh:start -->
+<p align="center">
+  <img src="./assets/icon.png" alt="SpaceFlip Pro app icon" width="130" />
+</p>
+
+## Product at a glance
+
+| Area | Current build |
+| --- | --- |
+| Client | Expo / React Native mobile app |
+| Intake | Goals, budget context, notes, project/property photos |
+| Output | Structured upgrade plans, checklists, summaries, budget and contractor notes |
+| Persistence | Authenticated saved projects |
+| Media | Private Supabase Storage with owner-scoped access + signed URLs |
+| AI | Server-side generation with provider fallbacks |
+| Cleanup | Workspace/account deletion through a trusted Edge Function |
+
+### Engineering angle
+
+The app keeps property photos private, moves privileged generation work off-device, and stores durable project state separately from generation jobs so the product can evolve without tying saved user work to one AI provider.
+<!-- portfolio-refresh:end -->
+
 ## Product flow
 
 SpaceFlip Pro helps a user move from an idea for a space to a structured project:
