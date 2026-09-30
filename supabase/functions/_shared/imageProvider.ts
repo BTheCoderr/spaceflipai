@@ -20,6 +20,7 @@ export type ConceptImageInput = {
   notes: string | null;
   planSummary: string | null;
   inputImageUrl: string;
+  variationIndex?: number;
 };
 
 export type ConceptImageResult =
@@ -82,6 +83,7 @@ export function buildConceptImagePrompt(input: ConceptImageInput): string {
   const goal = input.goal?.trim() || 'improve the space for its intended use';
   const budget = input.budgetRange?.trim() || 'mid-range, practical';
   const summary = input.planSummary?.trim();
+  const variationIndex = input.variationIndex ?? 0;
 
   return [
     'Create a realistic concept reference for this property upgrade.',
@@ -91,6 +93,9 @@ export function buildConceptImagePrompt(input: ConceptImageInput): string {
     `Budget level: ${budget}.`,
     projectTypeGuidance(input.projectType),
     summary ? `Plan context: ${summary}` : '',
+    variationIndex > 0
+      ? `Alternative concept #${variationIndex + 1}: make this visibly different from the prior concept while preserving the same structure, camera angle, and project goal.`
+      : '',
     'Style should be clean, practical, business-friendly, and achievable.',
     'Do not add impossible architecture. Do not add people. Do not add text or watermarks.',
     'This is a planning reference, not a final construction rendering.',
@@ -186,14 +191,23 @@ async function generateWithGemini(
     data?: unknown;
     mime_type?: unknown;
   };
+
+  const directOutput =
+    interaction?.output_image && typeof interaction.output_image?.data === 'string'
+      ? (interaction.output_image as GeminiImagePart)
+      : undefined;
+
   const outputParts: GeminiImagePart[] = Array.isArray(interaction?.steps)
     ? interaction.steps.flatMap((step: { content?: unknown[] }) =>
         Array.isArray(step?.content) ? (step.content as GeminiImagePart[]) : []
       )
     : [];
-  const imagePart = outputParts.find(
-    (part) => part?.type === 'image' && typeof part?.data === 'string'
-  );
+
+  const imagePart =
+    directOutput ??
+    outputParts.find(
+      (part) => part?.type === 'image' && typeof part?.data === 'string'
+    );
 
   if (!imagePart?.data) {
     console.warn('[imageProvider] Gemini returned no image output');
