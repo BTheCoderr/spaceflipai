@@ -27,6 +27,10 @@ const EDGE_STATUS_LABELS = [
   'Finalizing PDF-ready plan…',
 ] as const;
 
+type EdgeOutcome =
+  | { kind: 'success'; result: Awaited<ReturnType<typeof runUpgradeGeneration>> }
+  | { kind: 'fallback' };
+
 export default function GeneratingScreen() {
   const router = useRouter();
   const { jobId, projectType, projectTitle, goal, inputImageUrl } = useLocalSearchParams<{
@@ -39,7 +43,8 @@ export default function GeneratingScreen() {
 
   const navigated = useRef(false);
   const generationStarted = useRef(false);
-  const [stepsDone, setStepsDone] = useState(false);
+  const [progressDone, setProgressDone] = useState(false);
+  const [edgeOutcome, setEdgeOutcome] = useState<EdgeOutcome | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [statusLabel, setStatusLabel] = useState('Preparing your upgrade plan…');
 
@@ -67,17 +72,44 @@ export default function GeneratingScreen() {
   }, [activeJobId, router]);
 
   useEffect(() => {
-    if (!useEdgeFlow || stepsDone) return;
+    if (!useEdgeFlow || progressDone) return;
     setStatusLabel(EDGE_STATUS_LABELS[stepIndex] ?? EDGE_STATUS_LABELS[0]);
-  }, [useEdgeFlow, stepIndex, stepsDone]);
+  }, [useEdgeFlow, stepIndex, progressDone]);
 
+  // Start the real backend request immediately. The progress animation and network
+  // request run in parallel so users are not forced to wait through two serial delays.
   useEffect(() => {
-    if (!activeJobId || !stepsDone || generationStarted.current || navigated.current) return;
+    if (!useEdgeFlow || !activeJobId || generationStarted.current) return;
     generationStarted.current = true;
 
+    void runUpgradeGeneration(activeJobId)
+      .then((result) => {
+        setEdgeOutcome({ kind: 'success', result });
+      })
+      .catch((error) => {
+        // runUpgradeGeneration already contains provider fallbacks. Reaching this
+        // branch means even the final local fallback failed.
+        console.warn('[SpaceFlip Pro] Upgrade plan generation failed:', {
+          name: error instanceof Error ? error.name : 'unknown',
+        });
+        setEdgeOutcome({ kind: 'fallback' });
+      });
+  }, [activeJobId, useEdgeFlow]);
+
+  useEffect(() => {
+    if (
+      !useEdgeFlow ||
+      !activeJobId ||
+      !progressDone ||
+      !edgeOutcome ||
+      navigated.current
+    ) {
+      return;
+    }
+
     const finish = async () => {
-      try {
-        const result = await runUpgradeGeneration(activeJobId);
+      if (edgeOutcome.kind === 'success') {
+        const { result } = edgeOutcome;
         setStatusLabel('Upgrade plan ready');
         await completeCurrentJobMock(result.resultImageUrl, 0, {
           resultPayload: result.resultPayload,
@@ -102,51 +134,48 @@ export default function GeneratingScreen() {
             inputImageUrl: previewUri ?? '',
           },
         });
-      } catch (error) {
-        // runUpgradeGeneration falls back internally; this only fires if even the
-        // local fallback failed. Route to Result with the demo plan rather than blocking.
-        console.warn('[SpaceFlip Pro] Upgrade plan generation failed:', {
-          name: error instanceof Error ? error.name : 'unknown',
-        });
-        if (navigated.current) return;
-        navigated.current = true;
-
-        // Never show a stock/mock image: fall back to the user's original photo.
-        const fallbackImage = previewUri ?? '';
-        await completeCurrentJobMock(fallbackImage, 0, {
-          planSource: 'mock',
-          aiProvider: 'mock',
-          usedFallback: true,
-          imageProvider: 'none',
-          conceptImageGenerated: false,
-        });
-
-        router.replace({
-          pathname: '/result',
-          params: {
-            jobId: activeJobId,
-            projectType: projectType ?? project?.id ?? '',
-            projectTitle: displayTitle,
-            goal: goal ?? '',
-            imageUrl: fallbackImage,
-            inputImageUrl: previewUri ?? '',
-          },
-        });
+        return;
       }
+
+      // Never show a stock/mock image: fall back to the user's original photo.
+      const fallbackImage = previewUri ?? '';
+      await completeCurrentJobMock(fallbackImage, 0, {
+        planSource: 'mock',
+        aiProvider: 'mock',
+        usedFallback: true,
+        imageProvider: 'none',
+        conceptImageGenerated: false,
+      });
+
+      if (navigated.current) return;
+      navigated.current = true;
+
+      router.replace({
+        pathname: '/result',
+        params: {
+          jobId: activeJobId,
+          projectType: projectType ?? project?.id ?? '',
+          projectTitle: displayTitle,
+          goal: goal ?? '',
+          imageUrl: fallbackImage,
+          inputImageUrl: previewUri ?? '',
+        },
+      });
     };
 
     void finish();
   }, [
     activeJobId,
-    stepsDone,
     completeCurrentJobMock,
-    failCurrentJob,
-    router,
-    projectType,
-    project,
     displayTitle,
+    edgeOutcome,
     goal,
     previewUri,
+    progressDone,
+    project,
+    projectType,
+    router,
+    useEdgeFlow,
   ]);
 
   const handleProgressStep = (index: number) => {
@@ -157,7 +186,8 @@ export default function GeneratingScreen() {
 
   const handleComplete = async () => {
     if (useEdgeFlow) {
-      setStepsDone(true);
+      setProgressDone(true);
+      setStatusLabel(edgeOutcome ? 'Upgrade plan ready' : 'Finishing your upgrade plan…');
       return;
     }
 

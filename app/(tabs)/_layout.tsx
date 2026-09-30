@@ -38,9 +38,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="visualize"
         options={{
-          title: 'Visualize',
+          title: 'New Plan',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="scan-outline" size={size} color={color} />
+            <Ionicons name="add-circle-outline" size={size} color={color} />
           ),
         }}
       />

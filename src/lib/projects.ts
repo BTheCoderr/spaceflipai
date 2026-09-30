@@ -116,9 +116,18 @@ function rowToDesignProject(row: DesignProjectRow): DesignProject {
 
 function inputToLocalProject(input: SaveDesignProjectInput): DesignProject {
   const timestamp = nowIso();
+  const userId = input.userId ?? getOwnerId();
+  const existing = input.generationJobId
+    ? [...localProjects.values()].find(
+        (project) =>
+          project.userId === userId &&
+          project.generationJobId === input.generationJobId
+      )
+    : undefined;
+
   const project: DesignProject = {
-    id: createLocalId(),
-    userId: input.userId ?? getOwnerId(),
+    id: existing?.id ?? createLocalId(),
+    userId,
     generationJobId: input.generationJobId,
     projectType: input.projectType,
     goal: input.goal,
@@ -132,7 +141,7 @@ function inputToLocalProject(input: SaveDesignProjectInput): DesignProject {
     budgetItems: input.budgetItems ?? [],
     planSummary: input.planSummary,
     contractorNotes: input.contractorNotes,
-    createdAt: timestamp,
+    createdAt: existing?.createdAt ?? timestamp,
     updatedAt: timestamp,
   };
   localProjects.set(project.id, project);
@@ -162,6 +171,38 @@ async function saveDesignProjectSupabase(input: SaveDesignProjectInput): Promise
     plan_summary: input.planSummary ?? null,
     contractor_notes: input.contractorNotes ?? null,
   };
+
+  if (input.generationJobId) {
+    const { data: existing, error: lookupError } = await client
+      .from('design_projects')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('generation_job_id', input.generationJobId)
+      .maybeSingle();
+
+    if (lookupError) {
+      logDbWarning('saveDesignProject lookup failed', lookupError);
+      throw mapSupabaseDbError(lookupError);
+    }
+
+    if (existing?.id) {
+      const { data, error } = await client
+        .from('design_projects')
+        .update(row)
+        .eq('id', existing.id)
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        logDbWarning('saveDesignProject update failed', error ?? 'No data returned');
+        throw mapSupabaseDbError(error ?? { message: 'Update failed' });
+      }
+
+      const project = rowToDesignProject(data as DesignProjectRow);
+      localProjects.set(project.id, project);
+      return project;
+    }
+  }
 
   const { data, error } = await client
     .from('design_projects')

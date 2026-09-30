@@ -62,6 +62,7 @@ export default function ResultScreen() {
   const [showBefore, setShowBefore] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   const viewModel = useMemo(
@@ -121,7 +122,8 @@ export default function ResultScreen() {
     setSaving(true);
     try {
       await saveCurrentProject();
-      Alert.alert('Saved to Projects', 'Your upgrade plan was saved to Projects.');
+      setSaved(true);
+      Alert.alert('Saved to Projects', 'Your upgrade plan is ready in Projects.');
     } catch {
       Alert.alert(
         'Could not save',
@@ -162,7 +164,13 @@ export default function ResultScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <Pressable onPress={handleClose} hitSlop={interaction.hitSlop} style={styles.iconBtn}>
+        <Pressable
+          onPress={handleClose}
+          hitSlop={interaction.hitSlop}
+          style={styles.iconBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Close upgrade plan"
+        >
           <Ionicons name="close" size={26} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{displayTitle}</Text>
@@ -301,11 +309,19 @@ export default function ResultScreen() {
           </Text>
         </Pressable>
         <Pressable
-          style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed, saving && styles.disabledBtn]}
+          style={({ pressed }) => [
+            styles.primaryBtn,
+            pressed && !saved && styles.pressed,
+            (saving || saved) && styles.disabledBtn,
+          ]}
           onPress={() => void handleSave()}
-          disabled={saving}
+          disabled={saving || saved}
+          accessibilityRole="button"
+          accessibilityLabel={saved ? 'Project saved' : 'Save project'}
         >
-          <Text style={styles.primaryBtnText}>{saving ? 'Saving…' : 'Save Project'}</Text>
+          <Text style={styles.primaryBtnText}>
+            {saving ? 'Saving…' : saved ? 'Saved' : 'Save Project'}
+          </Text>
         </Pressable>
       </View>
 

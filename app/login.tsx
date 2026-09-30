@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -23,6 +24,7 @@ export default function LoginScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const hasProfileDetails = Boolean(name.trim() || email.trim());
 
   const enterApp = async (guest: boolean) => {
     if (submitting) return;
@@ -60,8 +62,8 @@ export default function LoginScreen() {
           </View>
           <Text style={styles.title}>Welcome to SpaceFlip Pro</Text>
           <Text style={styles.subtitle}>
-            Continue as guest to create a private workspace so your projects can be saved securely.
-            Name and email are optional — no password required.
+            Start with a private guest workspace. Add a name or email only if you want them shown
+            inside the app — no password required.
           </Text>
 
           <Text style={styles.label}>Name</Text>
@@ -98,18 +100,34 @@ export default function LoginScreen() {
 
         <View style={styles.footer}>
           <Pressable
-            style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.button,
+              !hasProfileDetails && styles.buttonDisabled,
+              pressed && hasProfileDetails && styles.pressed,
+            ]}
             onPress={() => enterApp(false)}
-            disabled={submitting}
+            disabled={submitting || !hasProfileDetails}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with optional profile details"
           >
-            <Text style={styles.buttonText}>Continue</Text>
+            {submitting && hasProfileDetails ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={[styles.buttonText, !hasProfileDetails && styles.buttonTextDisabled]}>
+                Continue with details
+              </Text>
+            )}
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
             onPress={() => enterApp(true)}
             disabled={submitting}
+            accessibilityRole="button"
+            accessibilityLabel="Continue as guest without profile details"
           >
-            <Text style={styles.secondaryText}>Continue as guest</Text>
+            <Text style={styles.secondaryText}>
+              {submitting && !hasProfileDetails ? 'Starting workspace…' : 'Continue as guest'}
+            </Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -163,7 +181,9 @@ const styles = StyleSheet.create({
     minHeight: 52,
     justifyContent: 'center',
   },
+  buttonDisabled: { backgroundColor: colors.pillInactive },
   buttonText: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
+  buttonTextDisabled: { color: colors.textSecondary },
   secondaryButton: { alignItems: 'center', justifyContent: 'center', minHeight: 44, marginTop: spacing.xs },
   secondaryText: { ...typography.body, fontWeight: '600', color: colors.accent },
   pressed: { opacity: interaction.pressedOpacity },

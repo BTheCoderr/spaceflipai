@@ -109,13 +109,26 @@ export default function ProjectsScreen() {
           <Text style={styles.kicker}>SpaceFlip Pro</Text>
           <Text style={styles.title}>Projects</Text>
         </View>
-        <Pressable
-          onPress={() => router.push('/settings')}
-          hitSlop={interaction.hitSlop}
-          style={({ pressed }) => [styles.settingsBtn, pressed && styles.pressed]}
-        >
-          <Ionicons name="settings-outline" size={24} color={colors.text} />
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable
+            onPress={() => router.push('/(tabs)/visualize')}
+            style={({ pressed }) => [styles.newPlanBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Create a new property upgrade plan"
+          >
+            <Ionicons name="add" size={18} color="#FFFFFF" />
+            <Text style={styles.newPlanText}>New Plan</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/settings')}
+            hitSlop={interaction.hitSlop}
+            style={({ pressed }) => [styles.settingsBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Open settings"
+          >
+            <Ionicons name="settings-outline" size={24} color={colors.text} />
+          </Pressable>
+        </View>
       </View>
 
       <TabScreenScroll>
@@ -155,15 +168,15 @@ export default function ProjectsScreen() {
           <EmptyState
             icon="business-outline"
             title="Start your first property upgrade"
-            message="Upload a space photo from Visualize to create a planning draft you can save and export."
-            actionLabel="Open Visualize"
+            message="Start a new plan with a property photo, goal, and optional budget."
+            actionLabel="Create New Plan"
             onAction={() => router.push('/(tabs)/visualize')}
           />
         ) : null}
 
         {savedProjects.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Saved Projects</Text>
+            <Text style={styles.sectionTitle}>Saved Projects · {savedProjects.length}</Text>
             {savedProjects.map((proj) => (
               <ProjectCard
                 key={proj.id}
@@ -176,7 +189,7 @@ export default function ProjectsScreen() {
 
         {dedupedJobs.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recent Jobs</Text>
+            <Text style={styles.sectionTitle}>Recent Jobs · {dedupedJobs.length}</Text>
             <Text style={styles.sectionHint}>
               Generation history. Save a job from the Result screen to keep it as a project.
             </Text>
@@ -271,6 +284,21 @@ const styles = StyleSheet.create({
   },
   kicker: { ...typography.caption, fontWeight: '600', color: colors.accent },
   title: { ...typography.largeTitle },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  newPlanBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 40,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.pillActive,
+  },
+  newPlanText: { color: '#FFFFFF', fontSize: 13, fontWeight: '800' },
   settingsBtn: {
     width: 44,
     height: 44,

@@ -11,6 +11,7 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { ScreenHeader } from '../src/components/ScreenHeader';
 import { SettingsRow } from '../src/components/SettingsRow';
 import { useProfile } from '../src/lib/profileStore';
@@ -22,6 +23,7 @@ const SITE_URL = 'https://spaceflippro.netlify.app';
 const PRIVACY_URL = `${SITE_URL}/privacy`;
 const TERMS_URL = `${SITE_URL}/terms`;
 const SUPPORT_URL = `${SITE_URL}/support`;
+const DELETE_DATA_URL = `${SITE_URL}/delete-data`;
 
 function shortUserCode(id: string | null): string | null {
   if (!id) return null;
@@ -33,6 +35,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { profile, supabaseUserId, isAnonymous, signOut } = useProfile();
   const [deleting, setDeleting] = useState(false);
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
   const openUrl = (url: string, fallbackTitle: string) => {
     Linking.openURL(url).catch(() =>
@@ -130,6 +133,10 @@ export default function SettingsScreen() {
         <SettingsRow label="FAQ & Support" onPress={() => openUrl(SUPPORT_URL, 'Support')} />
         <SettingsRow label="Terms of Use" onPress={() => openUrl(TERMS_URL, 'Terms of Use')} />
         <SettingsRow label="Privacy Policy" onPress={() => openUrl(PRIVACY_URL, 'Privacy Policy')} />
+        <SettingsRow
+          label="Data & deletion info"
+          onPress={() => openUrl(DELETE_DATA_URL, 'Data & deletion info')}
+        />
         <SettingsRow label="Contact Support" onPress={handleContactSupport} />
 
         <View style={styles.dangerWrap}>
@@ -142,6 +149,7 @@ export default function SettingsScreen() {
         </View>
 
         <Text style={styles.supportHint}>Need help? Email {SUPPORT_EMAIL}.</Text>
+        <Text style={styles.versionText}>SpaceFlip Pro · Version {appVersion}</Text>
       </ScrollView>
 
       {deleting ? (
@@ -201,6 +209,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginHorizontal: spacing.md,
     marginTop: spacing.md,
+  },
+  versionText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    opacity: 0.8,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

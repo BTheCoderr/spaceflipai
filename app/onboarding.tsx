@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
 import {
-  Dimensions,
   FlatList,
   Pressable,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
@@ -14,8 +14,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useProfile } from '../src/lib/profileStore';
 import { colors, interaction, radius, spacing, typography } from '../src/constants/theme';
-
-const { width } = Dimensions.get('window');
 
 type Slide = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -43,6 +41,7 @@ const slides: Slide[] = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const { completeOnboarding } = useProfile();
   const listRef = useRef<FlatList<Slide>>(null);
   const [index, setIndex] = useState(0);
@@ -71,7 +70,12 @@ export default function OnboardingScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.topBar}>
-        <Pressable onPress={skip} hitSlop={interaction.hitSlop}>
+        <Pressable
+          onPress={skip}
+          hitSlop={interaction.hitSlop}
+          accessibilityRole="button"
+          accessibilityLabel="Skip onboarding"
+        >
           <Text style={styles.skip}>Skip</Text>
         </Pressable>
       </View>
@@ -84,6 +88,11 @@ export default function OnboardingScreen() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScroll}
+        getItemLayout={(_, itemIndex) => ({
+          length: width,
+          offset: width * itemIndex,
+          index: itemIndex,
+        })}
         renderItem={({ item }) => (
           <View style={[styles.slide, { width }]}>
             <View style={styles.iconWrap}>
@@ -105,6 +114,8 @@ export default function OnboardingScreen() {
         <Pressable
           style={({ pressed }) => [styles.button, pressed && styles.pressed]}
           onPress={goNext}
+          accessibilityRole="button"
+          accessibilityLabel={isLast ? 'Get started with SpaceFlip Pro' : 'Next onboarding step'}
         >
           <Text style={styles.buttonText}>{isLast ? 'Get Started' : 'Next'}</Text>
         </Pressable>
@@ -132,13 +143,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing.xl,
   },
-  title: { ...typography.largeTitle, fontSize: 26, textAlign: 'center', marginBottom: spacing.md },
+  title: {
+    ...typography.largeTitle,
+    fontSize: 26,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    maxWidth: 560,
+  },
   body: {
     ...typography.body,
     fontSize: 16,
     lineHeight: 24,
     color: colors.textSecondary,
     textAlign: 'center',
+    maxWidth: 560,
   },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: spacing.xs, marginBottom: spacing.lg },
   dot: {

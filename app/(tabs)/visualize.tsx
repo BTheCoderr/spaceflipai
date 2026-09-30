@@ -14,11 +14,31 @@ export default function VisualizeScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.kicker}>SpaceFlip Pro</Text>
-        <Text style={styles.title}>Visualize</Text>
-        <Text style={styles.hero}>Turn any space into a plan.</Text>
+        <Text style={styles.title}>New Plan</Text>
+        <Text style={styles.hero}>Create a property upgrade plan.</Text>
         <Text style={styles.subhero}>
-          Upload a property photo and get an upgrade plan, budget, and task list for your business goals.
+          Start with a property photo, choose your goal, then get a practical plan, budget, checklist,
+          and PDF-ready handoff.
         </Text>
+        <View style={styles.flowRow}>
+          {[
+            ['camera-outline', '1', 'Photo'],
+            ['clipboard-outline', '2', 'Plan'],
+            ['document-text-outline', '3', 'Export'],
+          ].map(([icon, step, label]) => (
+            <View key={step} style={styles.flowStep}>
+              <View style={styles.flowIcon}>
+                <Ionicons
+                  name={icon as keyof typeof Ionicons.glyphMap}
+                  size={16}
+                  color={colors.accent}
+                />
+              </View>
+              <Text style={styles.flowStepNumber}>{step}</Text>
+              <Text style={styles.flowStepLabel}>{label}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
       <TabScreenScroll contentContainerStyle={styles.scroll}>
@@ -68,6 +88,30 @@ const styles = StyleSheet.create({
   title: { ...typography.largeTitle, marginBottom: spacing.sm },
   hero: { ...typography.title, fontSize: 20, marginBottom: spacing.xs },
   subhero: { ...typography.body, color: colors.textSecondary },
+  flowRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  flowStep: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    minHeight: 38,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: '#E8F5EE',
+  },
+  flowIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flowStepNumber: { fontSize: 11, fontWeight: '800', color: colors.accent },
+  flowStepLabel: { ...typography.caption, fontWeight: '700', color: colors.text },
   scroll: { paddingHorizontal: spacing.md, paddingBottom: spacing.xl },
   actionCard: {
     flexDirection: 'row',
