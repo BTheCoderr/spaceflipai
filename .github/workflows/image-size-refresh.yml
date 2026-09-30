@@ -1,0 +1,42 @@
+name: SpaceFlip Targeted Image Size Refresh
+
+on:
+  push:
+    branches:
+      - chore/audit-lock-refresh
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: chore/audit-lock-refresh
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.4'
+          cache: npm
+
+      - name: Refresh image-size transitively
+        run: npm update image-size --package-lock-only || true
+
+      - name: Verify install
+        run: npm ci
+
+      - name: Commit lockfile if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "No image-size lockfile change available."
+          else
+            git commit -m "chore: refresh image-size lockfile"
+            git push origin HEAD:chore/audit-lock-refresh
+          fi
