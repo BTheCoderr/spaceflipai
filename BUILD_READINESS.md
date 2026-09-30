@@ -153,6 +153,7 @@ The Expo/EAS development, preview, and production build profiles are wired to th
 - [x] Both Edge Functions deployed with JWT verification enabled
 - [ ] At least one real AI text provider secret (`GEMINI_API_KEY` or `GROQ_API_KEY`) configured in Supabase (otherwise plan text safely falls back to template generation)
 - [ ] For generated visual concepts: `IMAGE_GENERATION_ENABLED=true` plus a supported image provider. Gemini can reuse `GEMINI_API_KEY`; no separate image-provider key is required.
+- [x] Concept regeneration is real (not mock cycling), capped per job/day, and uses unique private Storage paths.
 - [ ] Supabase Anonymous Sign-Ins enabled in Auth settings
 - [ ] App reloaded with `-c` so the device runs the latest bundle
 
