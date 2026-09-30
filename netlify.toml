@@ -10,3 +10,5 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Netlify rebuild marker: 2026-09-30 portfolio refresh
