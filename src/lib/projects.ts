@@ -116,9 +116,18 @@ function rowToDesignProject(row: DesignProjectRow): DesignProject {
 
 function inputToLocalProject(input: SaveDesignProjectInput): DesignProject {
   const timestamp = nowIso();
+  const userId = input.userId ?? getOwnerId();
+  const existing = input.generationJobId
+    ? [...localProjects.values()].find(
+        (project) =>
+          project.userId === userId &&
+          project.generationJobId === input.generationJobId
+      )
+    : undefined;
+
   const project: DesignProject = {
-    id: createLocalId(),
-    userId: input.userId ?? getOwnerId(),
+    id: existing?.id ?? createLocalId(),
+    userId,
     generationJobId: input.generationJobId,
     projectType: input.projectType,
     goal: input.goal,
@@ -132,7 +141,7 @@ function inputToLocalProject(input: SaveDesignProjectInput): DesignProject {
     budgetItems: input.budgetItems ?? [],
     planSummary: input.planSummary,
     contractorNotes: input.contractorNotes,
-    createdAt: timestamp,
+    createdAt: existing?.createdAt ?? timestamp,
     updatedAt: timestamp,
   };
   localProjects.set(project.id, project);
