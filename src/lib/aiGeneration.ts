@@ -1,6 +1,7 @@
 import {
   completeGenerationJobMock,
   getGenerationJob,
+  refreshGenerationJob,
   updateGenerationJobStatus,
 } from './generationJobs';
 import { getOwnerId, getSupabaseClient, hasSupabaseConfig } from './supabase';
@@ -47,6 +48,7 @@ type EdgeFunctionPayload = {
   imageProvider?: string;
   imageGenerationStatus?: string;
   estimatedImageCostCents?: number;
+  imageGenerationCount?: number;
   error?: string;
 };
 
@@ -136,8 +138,8 @@ async function runEdgeFunctionGeneration(
     });
   }
 
-  // Sync in-memory job cache with DB row updated by the function.
-  await getGenerationJob(jobId);
+  // Sync in-memory job cache with the DB row updated by the function.
+  await refreshGenerationJob(jobId);
 
   return {
     resultImageUrl: data.resultImageUrl,
@@ -195,3 +197,46 @@ export async function runUpgradeGeneration(
     }
   }
 }
+
+export async function regenerateConceptImage(
+  jobId: string
+): Promise<UpgradeGenerationResult> {
+  if (!jobId) {
+    throw new AiGenerationError('Missing generation job.');
+  }
+
+  const client = getSupabaseClient();
+  if (!client || !hasSupabaseConfig()) {
+    throw new AiGenerationError('Concept regeneration requires the live SpaceFlip backend.');
+  }
+
+  const { data, error } = await client.functions.invoke<EdgeFunctionPayload>(
+    'generate-upgrade-plan',
+    {
+      body: { jobId, regenerateImage: true },
+    }
+  );
+
+  if (error || !data?.ok || !data.resultImageUrl) {
+    throw new AiGenerationError(
+      data?.error === 'Concept limit reached for this project'
+        ? 'You have reached the concept limit for this project.'
+        : "Couldn't generate another concept. Please try again."
+    );
+  }
+
+  await refreshGenerationJob(jobId);
+
+  return {
+    resultImageUrl: data.resultImageUrl,
+    resultPayload: data.resultPayload,
+    planSource: data.planSource ?? 'mock',
+    aiProvider: data.aiProvider ?? 'mock',
+    promptPreview: data.promptPreview,
+    source: 'edge',
+    usedFallback: false,
+    imageProvider: data.imageProvider ?? 'none',
+    conceptImageGenerated: data.imageGenerationStatus === 'completed',
+  };
+}
+
