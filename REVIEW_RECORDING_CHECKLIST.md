@@ -17,7 +17,7 @@ Apple asked for a screen recording that demonstrates the app's full functionalit
 - [ ] Show the **onboarding** slides.
 - [ ] Tap **Continue as guest**.
 - [ ] Land on **Projects** (empty state is fine).
-- [ ] Open **Visualize**.
+- [ ] Open **New Plan**.
 - [ ] Choose a **project type** (e.g., Airbnb / short-term rental).
 - [ ] Complete the **project intake** (goal, budget).
 - [ ] Trigger the **photo permission prompt** if it appears, then **select or upload a photo** (or use the demo photo).
