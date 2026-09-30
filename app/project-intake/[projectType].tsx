@@ -70,6 +70,12 @@ export default function ProjectIntakeScreen() {
         : 'interior'
   );
 
+  const readinessMessage = !selectedGoal
+    ? 'Choose your primary goal to continue.'
+    : !selectedInputImage
+      ? 'Add a property photo to continue.'
+      : 'Ready to build your upgrade plan.';
+
   if (!projectType) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -253,6 +259,14 @@ export default function ProjectIntakeScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
+        <Text
+          style={[
+            styles.footerHint,
+            selectedInputImage && selectedGoal && styles.footerHintReady,
+          ]}
+        >
+          {readinessMessage}
+        </Text>
         <Pressable
           style={({ pressed }) => [
             styles.button,
@@ -272,7 +286,7 @@ export default function ProjectIntakeScreen() {
                 (!selectedInputImage || !selectedGoal) && styles.buttonTextDisabled,
               ]}
             >
-              Continue
+              Build Upgrade Plan
             </Text>
           )}
         </Pressable>
@@ -330,6 +344,17 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  footerHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  footerHintReady: {
+    color: colors.accent,
+    fontWeight: '700',
   },
   button: {
     backgroundColor: colors.pillActive,
