@@ -27,8 +27,8 @@ export type ConceptImageResult =
   | { status: 'success'; bytes: Uint8Array; contentType: string; provider: string; costCents: number }
   | { status: 'failed'; provider: string; costCents: number; error: string };
 
-const GEMINI_IMAGE_MODEL = 'gemini-3.1-flash-image';
-const GEMINI_IMAGE_COST_CENTS = 7;
+const GEMINI_IMAGE_MODEL = 'gemini-3.1-flash-lite-image';
+const GEMINI_IMAGE_COST_CENTS = 4;
 const REPLICATE_MODEL = 'black-forest-labs/flux-kontext-pro';
 const REPLICATE_COST_CENTS = 4;
 const STABILITY_COST_CENTS = 4;
@@ -162,9 +162,6 @@ async function generateWithGemini(
         type: 'image',
         mime_type: 'image/png',
         image_size: '1K',
-      },
-      generation_config: {
-        thinking_level: 'low',
       },
     }),
   });
