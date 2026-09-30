@@ -163,6 +163,38 @@ async function saveDesignProjectSupabase(input: SaveDesignProjectInput): Promise
     contractor_notes: input.contractorNotes ?? null,
   };
 
+  if (input.generationJobId) {
+    const { data: existing, error: lookupError } = await client
+      .from('design_projects')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('generation_job_id', input.generationJobId)
+      .maybeSingle();
+
+    if (lookupError) {
+      logDbWarning('saveDesignProject lookup failed', lookupError);
+      throw mapSupabaseDbError(lookupError);
+    }
+
+    if (existing?.id) {
+      const { data, error } = await client
+        .from('design_projects')
+        .update(row)
+        .eq('id', existing.id)
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        logDbWarning('saveDesignProject update failed', error ?? 'No data returned');
+        throw mapSupabaseDbError(error ?? { message: 'Update failed' });
+      }
+
+      const project = rowToDesignProject(data as DesignProjectRow);
+      localProjects.set(project.id, project);
+      return project;
+    }
+  }
+
   const { data, error } = await client
     .from('design_projects')
     .insert(row)
