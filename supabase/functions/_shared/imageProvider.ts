@@ -5,8 +5,11 @@
 // keep the existing mock/fallback image.
 //
 // Provider direction:
-//   * IMAGE_GENERATION_PROVIDER=replicate (default) → FLUX Kontext (image edit)
+//   * IMAGE_GENERATION_PROVIDER=gemini → Gemini 3.1 Flash Image editing
+//   * IMAGE_GENERATION_PROVIDER=replicate → FLUX Kontext Pro image editing
 //   * IMAGE_GENERATION_PROVIDER=stability → Stability structure control
+//   * If unset, SpaceFlip automatically prefers an available Gemini key, then
+//     Replicate, then Stability.
 //
 // Never logs tokens or keys.
 
@@ -24,9 +27,13 @@ export type ConceptImageResult =
   | { status: 'success'; bytes: Uint8Array; contentType: string; provider: string; costCents: number }
   | { status: 'failed'; provider: string; costCents: number; error: string };
 
+const GEMINI_IMAGE_MODEL = 'gemini-3.1-flash-lite-image';
+const GEMINI_IMAGE_COST_CENTS = 4;
 const REPLICATE_MODEL = 'black-forest-labs/flux-kontext-pro';
 const REPLICATE_COST_CENTS = 4;
 const STABILITY_COST_CENTS = 4;
+
+type ImageProvider = 'gemini' | 'replicate' | 'stability';
 
 function redact(text: unknown): string {
   let out = typeof text === 'string' ? text : String(text ?? '');
@@ -40,9 +47,16 @@ export function isImageGenerationEnabled(): boolean {
   return Deno.env.get('IMAGE_GENERATION_ENABLED') === 'true';
 }
 
-function getProvider(): 'replicate' | 'stability' {
-  const p = Deno.env.get('IMAGE_GENERATION_PROVIDER')?.trim().toLowerCase();
-  return p === 'stability' ? 'stability' : 'replicate';
+function getProvider(): ImageProvider {
+  const configured = Deno.env.get('IMAGE_GENERATION_PROVIDER')?.trim().toLowerCase();
+  if (configured === 'gemini' || configured === 'replicate' || configured === 'stability') {
+    return configured;
+  }
+
+  if (Deno.env.get('GEMINI_API_KEY')) return 'gemini';
+  if (Deno.env.get('REPLICATE_API_TOKEN')) return 'replicate';
+  if (Deno.env.get('STABILITY_API_KEY')) return 'stability';
+  return 'gemini';
 }
 
 function projectTypeGuidance(projectType: string): string {
@@ -93,6 +107,122 @@ async function fetchImageBytes(url: string): Promise<{ bytes: Uint8Array; conten
   const contentType = (response.headers.get('content-type') ?? 'image/png').split(';')[0].trim();
   const buffer = await response.arrayBuffer();
   return { bytes: new Uint8Array(buffer), contentType: contentType || 'image/png' };
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, bytes.length));
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function generateWithGemini(
+  input: ConceptImageInput,
+  apiKey: string,
+  prompt: string
+): Promise<ConceptImageResult> {
+  let source: { bytes: Uint8Array; contentType: string };
+  try {
+    source = await fetchImageBytes(input.inputImageUrl);
+  } catch (error) {
+    console.warn('[imageProvider] Gemini input fetch failed', { message: redact(error) });
+    return { status: 'failed', provider: 'gemini', costCents: 0, error: 'gemini_input_fetch_failed' };
+  }
+
+  const model = Deno.env.get('GEMINI_IMAGE_MODEL')?.trim() || GEMINI_IMAGE_MODEL;
+  const res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+    method: 'POST',
+    headers: {
+      'x-goog-api-key': apiKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      input: [
+        { type: 'text', text: prompt },
+        {
+          type: 'image',
+          mime_type: source.contentType,
+          data: bytesToBase64(source.bytes),
+        },
+      ],
+      response_format: {
+        type: 'image',
+        mime_type: 'image/png',
+        image_size: '1K',
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const msg = redact(await res.text().catch(() => ''));
+    console.warn('[imageProvider] Gemini image edit failed', {
+      status: res.status,
+      message: msg,
+    });
+    return {
+      status: 'failed',
+      provider: 'gemini',
+      costCents: 0,
+      error: `gemini_${res.status}`,
+    };
+  }
+
+  const interaction = await res.json();
+  type GeminiImagePart = {
+    type?: string;
+    data?: unknown;
+    mime_type?: unknown;
+  };
+  const outputParts: GeminiImagePart[] = Array.isArray(interaction?.steps)
+    ? interaction.steps.flatMap((step: { content?: unknown[] }) =>
+        Array.isArray(step?.content) ? (step.content as GeminiImagePart[]) : []
+      )
+    : [];
+  const imagePart = outputParts.find(
+    (part) => part?.type === 'image' && typeof part?.data === 'string'
+  );
+
+  if (!imagePart?.data) {
+    console.warn('[imageProvider] Gemini returned no image output');
+    return {
+      status: 'failed',
+      provider: 'gemini',
+      costCents: GEMINI_IMAGE_COST_CENTS,
+      error: 'gemini_no_output',
+    };
+  }
+
+  try {
+    return {
+      status: 'success',
+      bytes: base64ToBytes(imagePart.data as string),
+      contentType:
+        typeof imagePart.mime_type === 'string' ? imagePart.mime_type : 'image/png',
+      provider: 'gemini',
+      costCents: GEMINI_IMAGE_COST_CENTS,
+    };
+  } catch (error) {
+    console.warn('[imageProvider] Gemini output decode failed', { message: redact(error) });
+    return {
+      status: 'failed',
+      provider: 'gemini',
+      costCents: GEMINI_IMAGE_COST_CENTS,
+      error: 'gemini_decode_failed',
+    };
+  }
 }
 
 async function generateWithReplicate(
@@ -226,6 +356,12 @@ export async function generateConceptImage(input: ConceptImageInput): Promise<Co
   const prompt = buildConceptImagePrompt(input);
 
   try {
+    if (provider === 'gemini') {
+      const key = Deno.env.get('GEMINI_API_KEY');
+      if (!key) return { status: 'failed', provider, costCents: 0, error: 'missing_gemini_key' };
+      return await generateWithGemini(input, key, prompt);
+    }
+
     if (provider === 'stability') {
       const key = Deno.env.get('STABILITY_API_KEY');
       if (!key) return { status: 'failed', provider, costCents: 0, error: 'missing_stability_key' };
