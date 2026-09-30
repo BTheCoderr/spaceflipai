@@ -1,56 +1,54 @@
 # SpaceFlip Pro
 
 <!-- repo-intro:start -->
-**Project snapshot:** SpaceFlip Pro is a mobile home-improvement planning app that turns property photos and project intake into saved design projects, structured upgrade plans, concept-generation workflows, checklists, budgets, and contractor-ready notes.
+**Project snapshot:** SpaceFlip Pro is an Expo/React Native property-upgrade planning app that turns project intake and property photos into saved design projects, structured upgrade plans, optional AI-generated concepts, and actionable checklists.
 
-**What it demonstrates:** Expo/React Native · TypeScript · Supabase Auth/Postgres/Storage/RLS · Edge Functions · image/AI workflow architecture.
+**What it demonstrates:** Expo/React Native · TypeScript · Supabase Auth/Postgres/Storage/RLS · Edge Functions · AI-provider fallbacks · private media handling.
 <!-- repo-intro:end -->
 
-## Product experience
+## Product flow
 
-SpaceFlip Pro is built around a project workspace rather than a one-off image generator.
+SpaceFlip Pro helps a user move from an idea for a space to a structured project:
 
-- Guided project intake for property goals, budget, photos, and notes
-- Saved design projects and generation history
-- Structured upgrade plans with plan summaries and contractor notes
-- Checklist and budget-item persistence
-- Private photo storage with signed access
-- AI-assisted plan generation with deterministic fallback behavior
-- Concept-image generation architecture
-- Advisor/assistant workflows
-- PDF/print and sharing support
-- User workspace deletion and privacy controls
+1. Complete onboarding and create a workspace identity.
+2. Start a design/project intake.
+3. Add project goals, budget context, notes, and property photos.
+4. Generate an upgrade plan through the server-side generation flow.
+5. Save projects, checklists, budget items, summaries, and contractor notes.
+6. Re-open projects and export/share plan output.
 
-## Backend model
+## Backend architecture
 
-Supabase provides authenticated workspace ownership, Postgres persistence, private Storage, Row Level Security, and Edge Functions.
+The Supabase backend intentionally keeps a small trusted surface:
 
-The application tables and storage paths are owner-scoped. Server-side functions derive identity from the caller's JWT rather than trusting a client-supplied user ID.
+- `generation_jobs` — generation requests and generated plan data
+- `design_projects` — saved user projects
+- private `design-inputs` storage — property photos and optional generated concepts
+- owner-scoped RLS using authenticated/anonymous Supabase sessions
+- `generate-upgrade-plan` Edge Function for structured plan generation
+- `delete-user-workspace` Edge Function for account/workspace cleanup
 
-See `SUPABASE_SCHEMA.md` and the setup/migration files for backend details.
+AI generation can use configured providers with deterministic fallbacks when a provider is unavailable.
 
 ## Stack
 
 - Expo SDK 54
 - React Native 0.81
-- React 19 + TypeScript
+- React 19
+- TypeScript
 - Expo Router
 - Supabase Auth, Postgres, Storage, RLS, and Edge Functions
-- Expo image picker/manipulation, print, and sharing APIs
+- EAS build tooling
 
 ## Local development
 
 ```bash
 npm install
-npm run dev
+npm start
 ```
 
-Useful validation:
+See `SUPABASE_SETUP.md`, `SUPABASE_SCHEMA.md`, and the SQL setup/migration files before connecting a fresh backend.
 
-```bash
-npm run typecheck
-npm run functions:check
-npm run release:check
-```
+## Security model
 
-Provider and service secrets belong in server/deployment configuration, never in the Expo client.
+Private user photos are stored in owner-scoped paths and resolved through short-lived signed URLs where needed. Service-role and AI-provider secrets stay server-side and are never shipped in the Expo client.
