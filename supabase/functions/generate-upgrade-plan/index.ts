@@ -88,22 +88,29 @@ async function maybeGenerateConceptImage(
     return { ...fallback, imageGenerationStatus: 'disabled' };
   }
 
-  // Cost guard: cap real image generations per user per day.
+  // Cost guard: count actual concept generations, including regenerations,
+  // across all of this user's jobs created today.
   try {
     const since = new Date();
     since.setHours(0, 0, 0, 0);
-    const { count } = await supabase
+    const { data: usageRows, error: usageError } = await supabase
       .from('generation_jobs')
-      .select('id', { count: 'exact', head: true })
+      .select('image_generation_count')
       .eq('user_id', record.user_id)
-      .eq('image_generation_status', 'completed')
       .gte('created_at', since.toISOString());
-    if (typeof count === 'number' && count >= maxImagesPerUserPerDay()) {
-      console.warn('[generate-upgrade-plan] Image generation daily limit reached for user');
-      return { ...fallback, imageGenerationStatus: 'skipped_limit' };
+
+    if (!usageError && Array.isArray(usageRows)) {
+      const usedToday = usageRows.reduce(
+        (sum, row) => sum + Math.max(0, Number(row.image_generation_count ?? 0)),
+        0
+      );
+      if (usedToday >= maxImagesPerUserPerDay()) {
+        console.warn('[generate-upgrade-plan] Image generation daily limit reached for user');
+        return { ...fallback, imageGenerationStatus: 'skipped_limit' };
+      }
     }
   } catch {
-    // If the guard query fails, proceed (single image per job is still bounded).
+    // If the guard query fails, the per-job cap still limits repeat generation.
   }
 
   const inputImageUrl =
