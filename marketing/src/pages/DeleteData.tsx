@@ -24,7 +24,8 @@ export function DeleteDataPage() {
           <li>Tap <strong>Delete Project</strong> on the project detail screen.</li>
         </ol>
         <p>
-          This removes the saved project record associated with that item.
+          This removes the saved project record and attempts to remove its linked generation
+          record and stored property/concept images.
         </p>
 
         <h2>Delete your entire guest workspace in the app</h2>

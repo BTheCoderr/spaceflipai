@@ -9,6 +9,10 @@ import {
   mapSupabaseDbError,
 } from './dbErrors';
 import { getOwnerId, getSupabaseClient, hasSupabaseConfig } from './supabase';
+import {
+  deleteDesignInputImage,
+  extractDesignInputStoragePath,
+} from './storage';
 
 export type DesignProject = {
   id: string;
@@ -330,22 +334,86 @@ export async function getDesignProject(projectId: string): Promise<DesignProject
 }
 
 export async function deleteDesignProject(projectId: string): Promise<void> {
-  localProjects.delete(projectId);
+  const cachedProject = localProjects.get(projectId);
 
   if (!hasSupabaseConfig()) {
+    localProjects.delete(projectId);
     return;
   }
 
   const client = getSupabaseClient();
   if (!client) {
+    localProjects.delete(projectId);
     return;
   }
 
-  const { error } = await client.from('design_projects').delete().eq('id', projectId);
-  if (error) {
-    logDbWarning('deleteDesignProject failed', error);
-    throw mapSupabaseDbError(error);
+  let generationJobId = cachedProject?.generationJobId;
+  if (!generationJobId) {
+    const { data: projectRow, error: projectLookupError } = await client
+      .from('design_projects')
+      .select('generation_job_id')
+      .eq('id', projectId)
+      .maybeSingle();
+
+    if (projectLookupError) {
+      logDbWarning('deleteDesignProject lookup failed', projectLookupError);
+      throw mapSupabaseDbError(projectLookupError);
+    }
+    generationJobId = projectRow?.generation_job_id ?? undefined;
   }
+
+  let storagePaths: string[] = [];
+  if (generationJobId) {
+    const { data: jobRow, error: jobLookupError } = await client
+      .from('generation_jobs')
+      .select('input_storage_path, concept_image_url, result_image_url')
+      .eq('id', generationJobId)
+      .maybeSingle();
+
+    if (jobLookupError) {
+      logDbWarning('deleteDesignProject generation lookup failed', jobLookupError);
+      throw mapSupabaseDbError(jobLookupError);
+    }
+
+    const ownerPrefix = `users/${getOwnerId()}/`;
+    const candidates = [
+      jobRow?.input_storage_path,
+      jobRow?.concept_image_url,
+      jobRow?.result_image_url,
+    ];
+
+    storagePaths = candidates
+      .map((value) => (typeof value === 'string' ? extractDesignInputStoragePath(value) : null))
+      .filter((value): value is string => value !== null && value.startsWith(ownerPrefix))
+      .filter((value, index, all) => all.indexOf(value) === index);
+  }
+
+  const { error: projectDeleteError } = await client
+    .from('design_projects')
+    .delete()
+    .eq('id', projectId);
+
+  if (projectDeleteError) {
+    logDbWarning('deleteDesignProject failed', projectDeleteError);
+    throw mapSupabaseDbError(projectDeleteError);
+  }
+
+  if (generationJobId) {
+    const { error: jobDeleteError } = await client
+      .from('generation_jobs')
+      .delete()
+      .eq('id', generationJobId);
+
+    if (jobDeleteError) {
+      logDbWarning('deleteDesignProject linked generation cleanup failed', jobDeleteError);
+    }
+  }
+
+  for (const storagePath of storagePaths) {
+    await deleteDesignInputImage(storagePath);
+  }
+
+  localProjects.delete(projectId);
 }
 
 /** Maps a persisted design project into the Projects tab view model. */

@@ -40,6 +40,6 @@ create index if not exists generation_jobs_user_created_idx
 --     and column_name in (
 --       'concept_image_url','image_provider','image_generation_status',
 --       'image_generation_error','estimated_image_cost_cents',
-      'image_generation_count'
+--       'image_generation_count'
 --     );
 -- ---------------------------------------------------------------------------

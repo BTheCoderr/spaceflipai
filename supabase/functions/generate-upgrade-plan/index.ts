@@ -21,6 +21,11 @@ function maxImagesPerJob(): number {
   return Number.isFinite(raw) && raw > 0 ? raw : 3;
 }
 
+function maxPlansPerUserPerDay(): number {
+  const raw = Number(Deno.env.get('MAX_PLAN_GENERATIONS_PER_USER_PER_DAY') ?? '20');
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 20;
+}
+
 type ConceptImageOutcome = {
   resultImageUrl: string;
   conceptImageUrl: string | null;
@@ -31,24 +36,65 @@ type ConceptImageOutcome = {
   imageGenerationCount: number;
 };
 
+type UsageReservation = {
+  status: 'reserved' | 'daily_limit' | 'job_limit' | 'invalid';
+  daily_count: number;
+  job_count: number;
+};
+
+async function reserveGenerationUsage(
+  supabase: SupabaseClient<any>,
+  userId: string,
+  jobId: string,
+  usageType: 'plan' | 'image',
+  dailyLimit: number,
+  jobLimit: number
+): Promise<UsageReservation | null> {
+  const { data, error } = await supabase.rpc('reserve_generation_usage', {
+    p_user_id: userId,
+    p_job_id: jobId,
+    p_usage_type: usageType,
+    p_daily_limit: dailyLimit,
+    p_job_limit: jobLimit,
+  });
+
+  if (error) {
+    console.error('[generate-upgrade-plan] Usage reservation failed:', {
+      usageType,
+      message: error.message,
+    });
+    return null;
+  }
+
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+
+  return data as UsageReservation;
+}
+
 async function resolveProviderInputImageUrl(
   supabase: SupabaseClient<any>,
   record: GenerationJobRecord
 ): Promise<string> {
-  const fallback = record.input_public_url ?? record.input_image_uri ?? '';
-  if (!record.input_storage_path) {
-    return fallback;
+  const storagePath = record.input_storage_path?.trim();
+  if (!storagePath) return '';
+
+  const expectedPrefix = `users/${record.user_id}/`;
+  if (!storagePath.startsWith(expectedPrefix)) {
+    console.warn('[generate-upgrade-plan] Refusing non-owner input storage path');
+    return '';
   }
 
   const { data, error } = await supabase.storage
     .from(DESIGN_INPUTS_BUCKET)
-    .createSignedUrl(record.input_storage_path, 10 * 60);
+    .createSignedUrl(storagePath, 10 * 60);
 
   if (error || !data?.signedUrl) {
     console.warn('[generate-upgrade-plan] Could not sign provider input image:', {
       message: error?.message ?? 'No signed URL returned',
     });
-    return fallback;
+    return '';
   }
 
   return data.signedUrl;
@@ -67,9 +113,8 @@ async function maybeGenerateConceptImage(
   providerInputImageUrl: string,
   planSummary: string | null
 ): Promise<ConceptImageOutcome> {
-  const currentGenerationCount = Math.max(0, Number(record.image_generation_count ?? 0));
+  let currentGenerationCount = Math.max(0, Number(record.image_generation_count ?? 0));
 
-  // Default (no real concept image): show the original property photo.
   const fallback: ConceptImageOutcome = {
     resultImageUrl: originalImageUrl,
     conceptImageUrl: null,
@@ -80,60 +125,83 @@ async function maybeGenerateConceptImage(
     imageGenerationCount: currentGenerationCount,
   };
 
-  if (currentGenerationCount >= maxImagesPerJob()) {
-    return { ...fallback, imageGenerationStatus: 'skipped_job_limit' };
-  }
-
   if (!isImageGenerationEnabled()) {
     return { ...fallback, imageGenerationStatus: 'disabled' };
   }
 
-  // Cost guard: count actual concept generations, including regenerations,
-  // across all of this user's jobs created today.
-  try {
-    const since = new Date();
-    since.setHours(0, 0, 0, 0);
-    const { data: usageRows, error: usageError } = await supabase
-      .from('generation_jobs')
-      .select('image_generation_count')
-      .eq('user_id', record.user_id)
-      .gte('created_at', since.toISOString());
-
-    if (!usageError && Array.isArray(usageRows)) {
-      const usedToday = usageRows.reduce(
-        (sum, row) => sum + Math.max(0, Number(row.image_generation_count ?? 0)),
-        0
-      );
-      if (usedToday >= maxImagesPerUserPerDay()) {
-        console.warn('[generate-upgrade-plan] Image generation daily limit reached for user');
-        return { ...fallback, imageGenerationStatus: 'skipped_limit' };
-      }
-    }
-  } catch {
-    // If the guard query fails, the per-job cap still limits repeat generation.
+  if (!providerInputImageUrl) {
+    return {
+      ...fallback,
+      imageGenerationStatus: 'failed',
+      imageGenerationError: 'safe_input_unavailable',
+    };
   }
 
-  const inputImageUrl =
-    providerInputImageUrl || record.input_public_url || record.input_image_uri || '';
+  const reservation = await reserveGenerationUsage(
+    supabase,
+    record.user_id,
+    jobId,
+    'image',
+    maxImagesPerUserPerDay(),
+    maxImagesPerJob()
+  );
+
+  if (!reservation) {
+    return {
+      ...fallback,
+      imageGenerationStatus: 'failed',
+      imageGenerationError: 'usage_reservation_failed',
+    };
+  }
+
+  if (reservation.status === 'daily_limit') {
+    return {
+      ...fallback,
+      imageGenerationStatus: 'skipped_limit',
+      imageGenerationCount: reservation.job_count,
+    };
+  }
+
+  if (reservation.status === 'job_limit') {
+    return {
+      ...fallback,
+      imageGenerationStatus: 'skipped_job_limit',
+      imageGenerationCount: reservation.job_count,
+    };
+  }
+
+  if (reservation.status !== 'reserved') {
+    return {
+      ...fallback,
+      imageGenerationStatus: 'failed',
+      imageGenerationError: 'usage_reservation_failed',
+      imageGenerationCount: reservation.job_count,
+    };
+  }
+
+  currentGenerationCount = reservation.job_count;
+  const reservedFallback: ConceptImageOutcome = {
+    ...fallback,
+    imageGenerationCount: currentGenerationCount,
+  };
+
   const concept = await generateConceptImage({
     projectType: record.project_type,
     goal: record.goal,
     budgetRange: record.budget_range,
     notes: record.notes,
     planSummary,
-    inputImageUrl,
-    variationIndex: currentGenerationCount,
+    inputImageUrl: providerInputImageUrl,
+    variationIndex: Math.max(0, currentGenerationCount - 1),
   });
 
   if (concept.status === 'disabled') {
-    return { ...fallback, imageGenerationStatus: 'disabled' };
+    return { ...reservedFallback, imageGenerationStatus: 'disabled' };
   }
 
   if (concept.status === 'failed') {
-    // Do not expose provider failure to the user. Keep the original photo as the
-    // visual and record the reason only in the internal debug column.
     return {
-      ...fallback,
+      ...reservedFallback,
       imageProvider: 'none',
       imageGenerationStatus: 'failed',
       imageGenerationError: concept.error,
@@ -141,9 +209,7 @@ async function maybeGenerateConceptImage(
     };
   }
 
-  const nextGenerationCount = currentGenerationCount + 1;
-  // Each concept gets its own path so the mobile image cache sees a new URI.
-  const path = `users/${record.user_id}/outputs/${jobId}/concept-${nextGenerationCount}.png`;
+  const path = `users/${record.user_id}/outputs/${jobId}/concept-${currentGenerationCount}.png`;
   const { error: uploadError } = await supabase.storage
     .from(DESIGN_INPUTS_BUCKET)
     .upload(path, concept.bytes, { contentType: concept.contentType, upsert: true });
@@ -151,7 +217,7 @@ async function maybeGenerateConceptImage(
   if (uploadError) {
     console.warn('[generate-upgrade-plan] Concept image upload failed:', uploadError.message);
     return {
-      ...fallback,
+      ...reservedFallback,
       imageProvider: 'none',
       imageGenerationStatus: 'failed',
       imageGenerationError: 'storage_upload_failed',
@@ -159,9 +225,6 @@ async function maybeGenerateConceptImage(
     };
   }
 
-  // Persist the stable private Storage path instead of an expiring signed URL.
-  // The mobile client resolves this canonical path through createSignedUrl()
-  // whenever it renders or exports the concept image.
   return {
     resultImageUrl: path,
     conceptImageUrl: path,
@@ -169,7 +232,7 @@ async function maybeGenerateConceptImage(
     imageGenerationStatus: 'completed',
     imageGenerationError: null,
     estimatedImageCostCents: concept.costCents,
-    imageGenerationCount: nextGenerationCount,
+    imageGenerationCount: currentGenerationCount,
   };
 }
 
@@ -271,6 +334,71 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ ok: false, error: 'User does not match job' }, 403);
   }
 
+  if (
+    regenerateImage &&
+    (
+      record.status !== 'completed' ||
+      !record.result_payload ||
+      Object.keys(record.result_payload).length === 0
+    )
+  ) {
+    return jsonResponse(
+      { ok: false, error: 'Generate the upgrade plan before requesting another concept' },
+      409
+    );
+  }
+
+  if (!regenerateImage && record.status === 'completed' && record.result_payload) {
+    const provider =
+      record.ai_provider === 'gemini' || record.ai_provider === 'groq'
+        ? record.ai_provider
+        : 'mock';
+    return jsonResponse({
+      ok: true,
+      jobId,
+      resultImageUrl: record.result_image_url ?? undefined,
+      resultPayload: record.result_payload,
+      planSource: record.plan_source === 'ai' ? 'ai' : 'mock',
+      aiProvider: provider,
+      estimatedCostCents: record.estimated_cost_cents ?? 0,
+      conceptImageUrl: record.concept_image_url ?? undefined,
+      imageProvider: record.image_provider ?? undefined,
+      imageGenerationStatus: record.image_generation_status ?? undefined,
+      estimatedImageCostCents: record.estimated_image_cost_cents ?? 0,
+      imageGenerationCount: record.image_generation_count ?? 0,
+    });
+  }
+
+  if (!regenerateImage) {
+    const reservation = await reserveGenerationUsage(
+      supabase,
+      authUserId,
+      jobId,
+      'plan',
+      maxPlansPerUserPerDay(),
+      1
+    );
+
+    if (!reservation) {
+      return jsonResponse({ ok: false, error: 'Could not start generation' }, 503);
+    }
+
+    if (reservation.status === 'daily_limit') {
+      return jsonResponse(
+        { ok: false, error: 'Daily plan generation limit reached. Try again later.' },
+        429
+      );
+    }
+
+    if (reservation.status === 'job_limit') {
+      return jsonResponse({ ok: false, error: 'This plan is already being generated' }, 409);
+    }
+
+    if (reservation.status !== 'reserved') {
+      return jsonResponse({ ok: false, error: 'Could not start generation' }, 503);
+    }
+  }
+
   const { error: processingError } = await supabase
     .from('generation_jobs')
     .update({ status: 'processing', error_message: null })
@@ -283,8 +411,11 @@ Deno.serve(async (req: Request) => {
 
   try {
     const prompt = buildUpgradePrompt(record);
-    const originalImageUrl = record.input_public_url ?? record.input_image_uri ?? '';
     const providerInputImageUrl = await resolveProviderInputImageUrl(supabase, record);
+    const originalImageUrl =
+      record.input_storage_path?.startsWith(`users/${authUserId}/`)
+        ? record.input_storage_path
+        : record.input_public_url ?? record.input_image_uri ?? '';
 
     let planResult: GenerateUpgradePlanTextResult;
     if (regenerateImage && record.result_payload) {
@@ -393,14 +524,14 @@ Deno.serve(async (req: Request) => {
       imageGenerationCount: image.imageGenerationCount,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Generation failed';
+    const internalMessage = error instanceof Error ? error.message : 'Generation failed';
 
     await supabase
       .from('generation_jobs')
-      .update({ status: 'failed', error_message: message })
+      .update({ status: 'failed', error_message: 'generation_failed' })
       .eq('id', jobId);
 
-    console.error('[generate-upgrade-plan] Generation failed:', message);
-    return jsonResponse({ ok: false, error: message }, 500);
+    console.error('[generate-upgrade-plan] Generation failed:', internalMessage);
+    return jsonResponse({ ok: false, error: 'Could not generate upgrade plan' }, 500);
   }
 });

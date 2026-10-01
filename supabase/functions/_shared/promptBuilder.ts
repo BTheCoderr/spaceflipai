@@ -45,7 +45,9 @@ function formatNotes(notes: string | null): string {
 export function buildUpgradePrompt(job: GenerationJobRecord): string {
   const projectType = job.project_type ?? 'empty-commercial';
   const typePrompt = PROJECT_PROMPTS[projectType] ?? DEFAULT_PROMPT;
-  const imageUrl = job.input_public_url ?? job.input_image_uri ?? '';
+  const hasPhoto = Boolean(
+    job.input_storage_path?.trim() || job.input_public_url?.trim() || job.input_image_uri?.trim()
+  );
 
   const sections = [
     'SpaceFlip Pro — property upgrade concept request.',
@@ -54,8 +56,10 @@ export function buildUpgradePrompt(job: GenerationJobRecord): string {
     formatGoal(job.goal),
     formatBudget(job.budget_range),
     formatNotes(job.notes),
-    imageUrl ? `Input property photo: ${imageUrl}` : 'Input property photo: not provided.',
-    'Output: one realistic upgraded concept image plus a practical upgrade plan. Preserve architecture unless scope says otherwise.',
+    hasPhoto
+      ? 'A property photo was supplied. Only reference visible conditions if the active provider actually receives image data.'
+      : 'Input property photo: not provided.',
+    'Output: a practical upgrade plan. Preserve architecture unless the available inputs clearly support a change.',
   ].filter(Boolean);
 
   return sections.join('\n\n');

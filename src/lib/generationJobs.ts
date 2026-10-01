@@ -154,9 +154,7 @@ function jobToInsertRow(input: CreateGenerationJobInput, userId: string) {
     input_image_uri: input.inputImageUri,
     input_storage_path: input.inputStoragePath ?? null,
     input_public_url: input.inputPublicUrl ?? input.inputImageUri,
-    status: 'queued' as const,
     source: input.source,
-    estimated_cost_cents: input.estimatedCostCents ?? 0,
   };
 }
 

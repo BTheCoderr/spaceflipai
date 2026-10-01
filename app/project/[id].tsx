@@ -116,24 +116,28 @@ export default function ProjectDetailScreen() {
 
   const handleDelete = () => {
     if (!project || deleting) return;
-    Alert.alert('Delete project', 'This will remove the saved project. This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setDeleting(true);
-          try {
-            await deleteDesignProject(project.id);
-            await loadSavedProjects();
-            handleBack();
-          } catch {
-            Alert.alert('Could not delete', "Couldn't delete this project. Please try again.");
-            setDeleting(false);
-          }
+    Alert.alert(
+      'Delete project',
+      'This removes the saved project, its linked generation record, and stored property/concept images. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteDesignProject(project.id);
+              await loadSavedProjects();
+              handleBack();
+            } catch {
+              Alert.alert('Could not delete', "Couldn't delete this project. Please try again.");
+              setDeleting(false);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   return (
