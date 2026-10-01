@@ -33,6 +33,7 @@ const GEMINI_IMAGE_COST_CENTS = 4;
 const REPLICATE_MODEL = 'black-forest-labs/flux-kontext-pro';
 const REPLICATE_COST_CENTS = 4;
 const STABILITY_COST_CENTS = 4;
+const MAX_PROVIDER_IMAGE_BYTES = 8 * 1024 * 1024;
 
 type ImageProvider = 'gemini' | 'replicate' | 'stability';
 
@@ -109,9 +110,19 @@ async function fetchImageBytes(url: string): Promise<{ bytes: Uint8Array; conten
   if (!response.ok) {
     throw new Error(`input_image_fetch_failed_${response.status}`);
   }
-  const contentType = (response.headers.get('content-type') ?? 'image/png').split(';')[0].trim();
+  const contentLength = Number(response.headers.get('content-length') ?? '0');
+  if (Number.isFinite(contentLength) && contentLength > MAX_PROVIDER_IMAGE_BYTES) {
+    throw new Error('input_image_too_large');
+  }
+  const contentType = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase();
+  if (!contentType.startsWith('image/')) {
+    throw new Error('input_image_not_image');
+  }
   const buffer = await response.arrayBuffer();
-  return { bytes: new Uint8Array(buffer), contentType: contentType || 'image/png' };
+  if (buffer.byteLength > MAX_PROVIDER_IMAGE_BYTES) {
+    throw new Error('input_image_too_large');
+  }
+  return { bytes: new Uint8Array(buffer), contentType };
 }
 
 function bytesToBase64(bytes: Uint8Array): string {

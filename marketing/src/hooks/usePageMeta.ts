@@ -41,6 +41,7 @@ export function usePageMeta({ title, description, path = '' }: PageMetaOptions) 
     upsertMeta('property', 'og:url', url);
     upsertMeta('property', 'og:type', 'website');
     upsertMeta('property', 'og:site_name', siteConfig.name);
+    upsertMeta('property', 'og:image', pageUrl('/logo.png'));
     upsertMeta('name', 'twitter:card', 'summary');
     upsertMeta('name', 'twitter:title', fullTitle);
     upsertMeta('name', 'twitter:description', desc);

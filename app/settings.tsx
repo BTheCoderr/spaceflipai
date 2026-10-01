@@ -59,7 +59,7 @@ export default function SettingsScreen() {
   const handleLogout = () => {
     Alert.alert(
       'Log out',
-      'Logging out ends this device\u2019s guest session. Cancel if you want to keep this guest workspace.',
+      'This guest workspace has no password or recovery sign-in. If you log out, saved projects in this workspace will become permanently inaccessible. Export any PDFs you want to keep first.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -126,8 +126,9 @@ export default function SettingsScreen() {
         </View>
 
         <Text style={styles.accountHint}>
-          Deleting your guest workspace removes saved SpaceFlip Pro project data connected to this
-          device session. For help, contact support.
+          This guest workspace cannot be recovered after logout, reinstall, or moving to another
+          device. Export important PDFs before ending the session. Deleting the workspace removes
+          its saved SpaceFlip Pro data.
         </Text>
 
         <SettingsRow label="FAQ & Support" onPress={() => openUrl(SUPPORT_URL, 'Support')} />

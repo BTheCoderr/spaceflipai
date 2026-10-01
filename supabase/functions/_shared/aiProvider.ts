@@ -103,6 +103,7 @@ export type GenerateUpgradeImageResult = {
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GROQ_MODEL = 'llama-3.1-8b-instant';
+const MAX_PROVIDER_IMAGE_BYTES = 8 * 1024 * 1024;
 
 type AiProviderPreference = 'gemini' | 'groq' | 'auto';
 
@@ -268,9 +269,24 @@ async function fetchImageForGemini(
       return null;
     }
 
-    const contentType = response.headers.get('content-type') ?? 'image/jpeg';
-    const mimeType = contentType.split(';')[0].trim() || 'image/jpeg';
+    const contentLength = Number(response.headers.get('content-length') ?? '0');
+    if (Number.isFinite(contentLength) && contentLength > MAX_PROVIDER_IMAGE_BYTES) {
+      console.warn('[aiProvider] Property photo exceeds provider size limit');
+      return null;
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    const mimeType = contentType.split(';')[0].trim().toLowerCase();
+    if (!mimeType.startsWith('image/')) {
+      console.warn('[aiProvider] Property photo response was not an image');
+      return null;
+    }
+
     const buffer = await response.arrayBuffer();
+    if (buffer.byteLength > MAX_PROVIDER_IMAGE_BYTES) {
+      console.warn('[aiProvider] Property photo exceeded provider size limit after download');
+      return null;
+    }
     const bytes = new Uint8Array(buffer);
     let binary = '';
     for (let i = 0; i < bytes.length; i++) {
@@ -292,13 +308,13 @@ async function generateWithGemini(
   apiKey: string
 ): Promise<GeminiAttemptResult> {
   const budgetRange = resolveBudgetRange(input.budgetRange);
-  const prompt = buildUpgradePlanPrompt(input);
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
   const parts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = [];
+  let image: { mimeType: string; data: string } | null = null;
 
   if (input.inputPublicUrl) {
-    const image = await fetchImageForGemini(input.inputPublicUrl);
+    image = await fetchImageForGemini(input.inputPublicUrl);
     if (image) {
       parts.push({ inline_data: { mime_type: image.mimeType, data: image.data } });
     } else {
@@ -306,6 +322,10 @@ async function generateWithGemini(
     }
   }
 
+  const prompt = buildUpgradePlanPrompt({
+    ...input,
+    inputPublicUrl: image ? input.inputPublicUrl : '',
+  });
   parts.push({ text: prompt });
 
   const response = await fetch(url, {
@@ -348,7 +368,7 @@ async function generateWithGroqOptional(
   apiKey: string
 ): Promise<UpgradePlanPayload | null> {
   const budgetRange = resolveBudgetRange(input.budgetRange);
-  const prompt = buildUpgradePlanPrompt(input);
+  const prompt = buildUpgradePlanPrompt({ ...input, inputPublicUrl: '' });
 
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',

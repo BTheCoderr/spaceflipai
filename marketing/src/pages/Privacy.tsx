@@ -61,8 +61,17 @@ export function PrivacyPage() {
             operations
           </li>
           <li>
-            <strong>Google Gemini / Groq</strong> — AI text generation for upgrade plans, managed
-            server-side
+            <strong>Google Gemini</strong> — AI plan generation. When Gemini vision is used, the
+            property photo and relevant project details are sent server-side for analysis.
+          </li>
+          <li>
+            <strong>Groq</strong> — text-only fallback plan generation from project details. The
+            app does not send the property photo to Groq in this fallback path.
+          </li>
+          <li>
+            <strong>Gemini image / Replicate / Stability</strong> — optional concept-image
+            generation when that feature is enabled. The selected provider receives the property
+            photo and project context needed to create the concept.
           </li>
           <li>
             <strong>Expo / EAS</strong> — mobile app build and update infrastructure
@@ -104,10 +113,12 @@ export function PrivacyPage() {
 
         <h2>Data retention</h2>
         <p>
-          We retain uploaded photos, project records, and generated plan content for as long as
-          needed to provide the service and fulfill your requests. If you ask us to delete data,
-          we will process reasonable deletion requests in accordance with applicable law and our
-          operational capabilities.
+          Saved project records, their linked generation records, and associated property/concept
+          images are kept until you delete the project or delete the guest workspace. Deleting a
+          project removes that saved project and attempts to remove its linked generation record
+          and stored images. Unsaved or abandoned generation records may remain during the beta
+          until the guest workspace is deleted or you request deletion by email. We do not use
+          those retained records for advertising.
         </p>
 
         <h2>Children</h2>

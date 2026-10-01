@@ -207,7 +207,7 @@ export default function ResultScreen() {
         <View style={styles.fallbackNote}>
           <Ionicons name="information-circle-outline" size={15} color={colors.textSecondary} />
           <Text style={styles.fallbackNoteText}>
-            Your plan was prepared from your project details. Review every tab and export a PDF.
+            AI was unavailable, so this is a template based on your project details. It did not analyze the property photo.
           </Text>
         </View>
       ) : null}

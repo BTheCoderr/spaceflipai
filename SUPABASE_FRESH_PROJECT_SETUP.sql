@@ -44,7 +44,11 @@ create table if not exists public.generation_jobs (
   budget_range text,
   notes text,
   input_image_uri text,
-  input_storage_path text,
+  input_storage_path text
+    check (
+      input_storage_path is null
+      or input_storage_path like ('users/' || user_id::text || '/%')
+    ),
   input_public_url text,
   result_image_url text,
   status text not null default 'queued'
@@ -74,6 +78,108 @@ create index if not exists generation_jobs_status_idx
 
 create index if not exists generation_jobs_user_created_idx
   on public.generation_jobs (user_id, created_at desc);
+
+-- Server-owned usage ledger. This survives generation job deletion so clients
+-- cannot reset daily AI spend caps by deleting rows.
+create table if not exists public.generation_usage (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  job_id uuid not null,
+  usage_type text not null check (usage_type in ('plan', 'image')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists generation_usage_user_type_created_idx
+  on public.generation_usage (user_id, usage_type, created_at desc);
+
+create index if not exists generation_usage_job_type_idx
+  on public.generation_usage (job_id, usage_type);
+
+create unique index if not exists generation_usage_one_plan_per_job_idx
+  on public.generation_usage (job_id)
+  where usage_type = 'plan';
+
+-- Atomic quota reservation. Advisory locks serialize reservations per user and
+-- usage type so concurrent scripts cannot race past the daily or per-job cap.
+create or replace function public.reserve_generation_usage(
+  p_user_id uuid,
+  p_job_id uuid,
+  p_usage_type text,
+  p_daily_limit integer,
+  p_job_limit integer
+)
+returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_daily_count integer := 0;
+  v_job_count integer := 0;
+begin
+  if p_user_id is null
+     or p_job_id is null
+     or p_usage_type not in ('plan', 'image')
+     or p_daily_limit is null
+     or p_daily_limit < 1
+     or p_job_limit is null
+     or p_job_limit < 1 then
+    return pg_catalog.jsonb_build_object(
+      'status', 'invalid',
+      'daily_count', 0,
+      'job_count', 0
+    );
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(p_user_id::text || ':' || p_usage_type, 0)
+  );
+
+  select count(*)::integer
+    into v_daily_count
+    from public.generation_usage
+   where user_id = p_user_id
+     and usage_type = p_usage_type
+     and created_at >= pg_catalog.now() - interval '24 hours';
+
+  select count(*)::integer
+    into v_job_count
+    from public.generation_usage
+   where user_id = p_user_id
+     and job_id = p_job_id
+     and usage_type = p_usage_type;
+
+  if v_daily_count >= p_daily_limit then
+    return pg_catalog.jsonb_build_object(
+      'status', 'daily_limit',
+      'daily_count', v_daily_count,
+      'job_count', v_job_count
+    );
+  end if;
+
+  if v_job_count >= p_job_limit then
+    return pg_catalog.jsonb_build_object(
+      'status', 'job_limit',
+      'daily_count', v_daily_count,
+      'job_count', v_job_count
+    );
+  end if;
+
+  insert into public.generation_usage (user_id, job_id, usage_type)
+  values (p_user_id, p_job_id, p_usage_type);
+
+  return pg_catalog.jsonb_build_object(
+    'status', 'reserved',
+    'daily_count', v_daily_count + 1,
+    'job_count', v_job_count + 1
+  );
+end;
+$$;
+
+revoke all on function public.reserve_generation_usage(uuid, uuid, text, integer, integer)
+  from public, anon, authenticated;
+grant execute on function public.reserve_generation_usage(uuid, uuid, text, integer, integer)
+  to service_role;
 
 drop trigger if exists generation_jobs_set_updated_at on public.generation_jobs;
 create trigger generation_jobs_set_updated_at
@@ -127,12 +233,42 @@ create trigger design_projects_set_updated_at
 -- ---------------------------------------------------------------------------
 alter table public.generation_jobs enable row level security;
 alter table public.design_projects enable row level security;
+alter table public.generation_usage enable row level security;
 
 revoke all on table public.generation_jobs from anon;
 revoke all on table public.design_projects from anon;
+revoke all on table public.generation_usage from public, anon, authenticated;
+
+drop policy if exists "No client access to generation_usage" on public.generation_usage;
+create policy "No client access to generation_usage"
+  on public.generation_usage for all
+  to authenticated
+  using (false)
+  with check (false);
 
 grant usage on schema public to authenticated, service_role;
-grant select, insert, update, delete on table public.generation_jobs to authenticated, service_role;
+
+revoke all on table public.generation_jobs from authenticated;
+grant select, delete on table public.generation_jobs to authenticated;
+grant insert (
+  user_id,
+  project_type,
+  goal,
+  budget_range,
+  notes,
+  input_image_uri,
+  input_storage_path,
+  input_public_url,
+  source
+) on table public.generation_jobs to authenticated;
+grant update (
+  status,
+  error_message,
+  result_image_url
+) on table public.generation_jobs to authenticated;
+grant select, insert, update, delete on table public.generation_jobs to service_role;
+grant select, insert, update, delete on table public.generation_usage to service_role;
+
 grant select, insert, update, delete on table public.design_projects to authenticated, service_role;
 
 drop policy if exists "Users select own generation_jobs" on public.generation_jobs;
@@ -145,7 +281,13 @@ drop policy if exists "Users insert own generation_jobs" on public.generation_jo
 create policy "Users insert own generation_jobs"
   on public.generation_jobs for insert
   to authenticated
-  with check (user_id = (select auth.uid()));
+  with check (
+    user_id = (select auth.uid())
+    and (
+      input_storage_path is null
+      or input_storage_path like ('users/' || (select auth.uid())::text || '/%')
+    )
+  );
 
 drop policy if exists "Users update own generation_jobs" on public.generation_jobs;
 create policy "Users update own generation_jobs"
@@ -267,13 +409,13 @@ create policy "Users delete own design-inputs"
   );
 
 -- Platform hardening: this Supabase helper does not need to be callable via RPC.
-do $
+do $$
 begin
   if to_regprocedure('public.rls_auto_enable()') is not null then
     revoke execute on function public.rls_auto_enable() from public, anon, authenticated;
   end if;
 end
-$;
+$$;
 
 commit;
 
