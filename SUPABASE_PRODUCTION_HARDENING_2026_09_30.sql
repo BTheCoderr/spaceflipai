@@ -106,6 +106,14 @@ grant execute on function public.reserve_generation_usage(uuid, uuid, text, inte
 
 alter table public.generation_usage enable row level security;
 revoke all on table public.generation_usage from public, anon, authenticated;
+
+drop policy if exists "No client access to generation_usage" on public.generation_usage;
+create policy "No client access to generation_usage"
+  on public.generation_usage for all
+  to authenticated
+  using (false)
+  with check (false);
+
 grant select, insert, update, delete on table public.generation_usage to service_role;
 
 alter table public.generation_jobs
@@ -152,8 +160,7 @@ create policy "Users insert own generation_jobs"
     )
   );
 
-commit;
+alter table public.generation_jobs
+  validate constraint generation_jobs_owned_storage_path_check;
 
--- Existing beta rows can be reviewed, then validated with:
--- alter table public.generation_jobs
---   validate constraint generation_jobs_owned_storage_path_check;
+commit;

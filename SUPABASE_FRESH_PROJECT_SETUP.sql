@@ -239,6 +239,13 @@ revoke all on table public.generation_jobs from anon;
 revoke all on table public.design_projects from anon;
 revoke all on table public.generation_usage from public, anon, authenticated;
 
+drop policy if exists "No client access to generation_usage" on public.generation_usage;
+create policy "No client access to generation_usage"
+  on public.generation_usage for all
+  to authenticated
+  using (false)
+  with check (false);
+
 grant usage on schema public to authenticated, service_role;
 
 revoke all on table public.generation_jobs from authenticated;
