@@ -1,5 +1,7 @@
 # SpaceFlip Pro
 
+**Web preview:** https://spaceflippro.netlify.app
+
 <!-- repo-intro:start -->
 **Project snapshot:** SpaceFlip Pro is an Expo/React Native property-upgrade planning app that turns project intake and property photos into saved design projects, structured upgrade plans, optional AI-generated concepts, and actionable checklists.
 
