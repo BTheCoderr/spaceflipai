@@ -48,7 +48,7 @@ export async function requestCameraPermission(): Promise<boolean> {
 
 export async function requestMediaLibraryPermission(): Promise<boolean> {
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  return status === 'granted';
+  return status === 'granted' || status === 'limited';
 }
 
 export function normalizePickedImage(
@@ -69,13 +69,8 @@ export function normalizePickedImage(
 export async function resizeImageForUpload(image: PickedImage): Promise<PickedImage> {
   const longEdge = Math.max(image.width, image.height);
 
-  if (image.fileSize && image.fileSize > MAX_INPUT_BYTES && longEdge <= MAX_LONG_EDGE) {
-    throw new ImagePickerError(
-      'That photo is too large. Please choose a smaller image or take a new photo.',
-      'too_large'
-    );
-  }
-
+  // Even an oversized source can produce a safe, compressed JPEG. Validate
+  // the generated output rather than rejecting the original before resizing.
   try {
     const resizeAction =
       longEdge > MAX_LONG_EDGE
@@ -97,6 +92,8 @@ export async function resizeImageForUpload(image: PickedImage): Promise<PickedIm
       height: result.height,
       mimeType: 'image/jpeg',
       fileName: image.fileName?.replace(/\.\w+$/, '.jpg') ?? `photo-${Date.now()}.jpg`,
+      // Source metadata is invalid after JPEG compression. Storage validates bytes.
+      fileSize: undefined,
     };
   } catch {
     throw new ImagePickerError(

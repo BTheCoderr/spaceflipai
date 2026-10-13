@@ -25,8 +25,7 @@ export class StorageUploadError extends Error {
   }
 }
 
-const DEFAULT_MOCK_URL =
-  'https://images.unsplash.com/photo-1618221197160-8070ed78f1c9?w=600';
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
 const NETWORK_ERROR_MESSAGE =
   "Couldn't upload this photo. Please check your connection and try again.";
@@ -54,9 +53,8 @@ export function buildStoragePath(userId: string, fileName: string): string {
 export function getPublicImageUrl(storagePath: string): string {
   const client = getSupabaseClient();
   if (!client) {
-    return storagePath.startsWith('http') || storagePath.startsWith('file://')
-      ? storagePath
-      : DEFAULT_MOCK_URL;
+    // Never silently replace a missing property photo with an unrelated image.
+    return storagePath;
   }
 
   // Keep a stable canonical storage URL in persisted rows. When the bucket is
@@ -268,12 +266,9 @@ function mapSupabaseUploadError(error: { message?: string; statusCode?: string |
 function buildMockUploadResult(image: PickedImage, userId: string): UploadDesignInputResult {
   const fileName = image.fileName ?? `${image.source}-${Date.now()}.jpg`;
   const storagePath = buildStoragePath(userId, fileName);
-  const publicUrl =
-    image.uri.startsWith('http') ||
-    image.uri.startsWith('file://') ||
-    image.uri.startsWith('content://')
-      ? image.uri
-      : DEFAULT_MOCK_URL;
+  // For offline development, retain the actual selected photo, including
+  // camera, Android content and bundled asset URIs.
+  const publicUrl = image.uri;
 
   logUploadDiag('Mock upload fallback (Supabase not configured)', {
     storagePath,
@@ -292,7 +287,7 @@ function buildMockUploadResult(image: PickedImage, userId: string): UploadDesign
 
 /** Legacy remote example URLs are passed through (never uploaded). */
 function buildRemoteExampleUploadResult(image: PickedImage): UploadDesignInputResult {
-  const publicUrl = image.uri.startsWith('http') ? image.uri : DEFAULT_MOCK_URL;
+  const publicUrl = image.uri;
 
   logUploadDiag('Passing through remote example photo URL', {
     publicUrl,
@@ -330,6 +325,12 @@ async function uploadDesignInputImageSupabase(
   });
 
   const body = await uriToUploadBody(image.uri);
+  if (body.byteLength > MAX_UPLOAD_BYTES) {
+    throw new StorageUploadError(
+      'That photo is too large even after compression. Try a smaller photo.',
+      'too_large'
+    );
+  }
 
   const { error } = await client.storage.from(DESIGN_INPUTS_BUCKET).upload(storagePath, body, {
     contentType: mimeType,

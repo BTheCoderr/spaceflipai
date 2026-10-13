@@ -216,7 +216,9 @@ function ProjectCard({
       onPress={onPress}
     >
       <RemoteImage
-        uri={project.resultImageUrl}
+        // Saved projects may contain legacy mock/result URLs; show the real
+        // property photo until a verified concept can be loaded in detail.
+        uri={project.inputImageUri || project.resultImageUrl}
         style={styles.cardImage}
         containerStyle={styles.cardImageWrap}
       />
@@ -250,7 +252,7 @@ function RecentJobCard({ job, onPress }: { job: GenerationJob; onPress: () => vo
       disabled={!isCompleted}
     >
       <RemoteImage
-        uri={job.resultImageUrl ?? job.inputPublicUrl ?? job.inputImageUri}
+        uri={job.inputPublicUrl ?? job.inputImageUri ?? job.resultImageUrl ?? ''}
         style={styles.jobImage}
         containerStyle={styles.jobImageWrap}
       />
