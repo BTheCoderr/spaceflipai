@@ -3,7 +3,7 @@ import type { TablesUpdate } from '../types/supabase.generated';
 import type { PickedImageSource } from './imagePicker';
 import { DB_TABLE_MISSING_MESSAGE, logDbWarning, mapSupabaseDbError } from './dbErrors';
 import { canUseGeneration, consumeGenerationQuota } from './payments';
-import { getOwnerId, getSupabaseClient, hasSupabaseConfig } from './supabase';
+import { getCurrentSession, getOwnerId, getSupabaseClient, hasSupabaseConfig } from './supabase';
 
 export type GenerationJobStatus =
   | 'queued'
@@ -385,7 +385,7 @@ export async function failGenerationJob(
   return updateGenerationJobStatus(jobId, 'failed', { errorMessage });
 }
 
-async function getGenerationJobSupabase(jobId: string): Promise<GenerationJob | null> {
+async function getGenerationJobSupabase(jobId: string, userId: string): Promise<GenerationJob | null> {
   const client = getSupabaseClient();
   if (!client) {
     return null;
@@ -395,6 +395,7 @@ async function getGenerationJobSupabase(jobId: string): Promise<GenerationJob | 
     .from('generation_jobs')
     .select('*')
     .eq('id', jobId)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (error) {
@@ -412,28 +413,26 @@ async function getGenerationJobSupabase(jobId: string): Promise<GenerationJob | 
 }
 
 export async function getGenerationJob(jobId: string): Promise<GenerationJob | null> {
+  if (!jobId) return null;
   const cached = jobs.get(jobId);
-  if (cached) {
-    return { ...cached };
+  if (!hasSupabaseConfig()) {
+    return cached?.userId === getOwnerId() ? { ...cached } : null;
   }
-
-  if (hasSupabaseConfig()) {
-    const job = await getGenerationJobSupabase(jobId);
-    if (job) {
-      return job;
-    }
-  }
-
-  return null;
+  const session = await getCurrentSession();
+  const userId = session?.user?.id;
+  if (!userId) return null;
+  if (cached?.userId === userId) return { ...cached };
+  return getGenerationJobSupabase(jobId, userId);
 }
 
 /** Force-refreshes a job from Supabase after an Edge Function mutates it. */
 export async function refreshGenerationJob(jobId: string): Promise<GenerationJob | null> {
   if (!hasSupabaseConfig()) {
     const cached = jobs.get(jobId);
-    return cached ? { ...cached } : null;
+    return cached?.userId === getOwnerId() ? { ...cached } : null;
   }
-  return getGenerationJobSupabase(jobId);
+  const session = await getCurrentSession();
+  return session?.user?.id ? getGenerationJobSupabase(jobId, session.user.id) : null;
 }
 
 async function listGenerationJobsSupabase(userId: string): Promise<GenerationJob[]> {
@@ -461,17 +460,17 @@ async function listGenerationJobsSupabase(userId: string): Promise<GenerationJob
 }
 
 export async function listGenerationJobsForUser(
-  userId = getOwnerId()
+  userId?: string
 ): Promise<GenerationJob[]> {
   if (hasSupabaseConfig()) {
-    const remoteJobs = await listGenerationJobsSupabase(userId);
-    if (remoteJobs.length > 0) {
-      return remoteJobs.map((job) => ({ ...job }));
-    }
+    const session = await getCurrentSession();
+    if (!session?.user?.id || (userId && userId !== session.user.id)) return [];
+    // Never resurrect backend-deleted jobs from stale in-memory state.
+    return (await listGenerationJobsSupabase(session.user.id)).map((job) => ({ ...job }));
   }
-
+  const localOwnerId = userId ?? getOwnerId();
   return [...jobs.values()]
-    .filter((job) => job.userId === userId)
+    .filter((job) => job.userId === localOwnerId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map((job) => ({ ...job }));
 }
