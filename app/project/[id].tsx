@@ -12,6 +12,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { RemoteImage } from '../../src/components/RemoteImage';
+import { ResultActionBar } from '../../src/components/ResultActionBar';
 import {
   deleteDesignProject,
   getDesignProject,
@@ -38,6 +39,7 @@ export default function ProjectDetailScreen() {
   const [planSourceText, setPlanSourceText] = useState('Saved planning draft');
   const [providerText, setProviderText] = useState<string | undefined>(undefined);
   const [conceptGenerated, setConceptGenerated] = useState(false);
+  const [showBefore, setShowBefore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -50,9 +52,13 @@ export default function ProjectDetailScreen() {
         .then(async (p) => {
           if (!active) return;
           setProject(p);
+          setConceptGenerated(false);
+          setShowBefore(false);
+          setPlanSourceText('Saved planning draft');
+          setProviderText(undefined);
           // Derive the real plan source/provider from the linked generation job, if any.
           if (p?.generationJobId) {
-            const job = await getGenerationJob(p.generationJobId);
+            const job = await getGenerationJob(p.generationJobId).catch(() => null);
             if (active && job) {
               const source = job.planSource === 'ai' ? 'ai' : 'mock';
               setPlanSourceText(planSourceLabel(source));
@@ -61,9 +67,19 @@ export default function ProjectDetailScreen() {
                   ? job.aiProvider
                   : undefined;
               setProviderText(aiProviderDevLabel(provider));
-              setConceptGenerated(job.imageGenerationStatus === 'completed');
+              // Never label an original photo as an AI concept just because a job completed.
+              setConceptGenerated(
+                job.imageGenerationStatus === 'completed' &&
+                  Boolean(job.conceptImageUrl) &&
+                  Boolean(p.inputImageUrl) &&
+                  Boolean(p.resultImageUrl) &&
+                  p.resultImageUrl !== p.inputImageUrl
+              );
             }
           }
+        })
+        .catch(() => {
+          if (active) setProject(null);
         })
         .finally(() => {
           if (active) setLoading(false);
@@ -73,6 +89,8 @@ export default function ProjectDetailScreen() {
       };
     }, [id])
   );
+
+  const canCompare = conceptGenerated && Boolean(project?.inputImageUrl && project?.resultImageUrl);
 
   const handleBack = () => {
     if (router.canGoBack()) router.back();
@@ -163,18 +181,28 @@ export default function ProjectDetailScreen() {
       ) : (
         <>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-            <RemoteImage
-              uri={
-                conceptGenerated
-                  ? project.resultImageUrl
-                  : project.inputImageUrl || project.resultImageUrl
-              }
-              style={styles.image}
-              containerStyle={styles.imageWrap}
-            />
+            <View style={styles.imageArea}>
+              <RemoteImage
+                uri={
+                  canCompare && showBefore
+                    ? project.inputImageUrl
+                    : conceptGenerated
+                      ? project.resultImageUrl
+                      : project.inputImageUrl || project.resultImageUrl
+                }
+                style={styles.image}
+                containerStyle={styles.imageWrap}
+              />
+              {canCompare ? (
+                <ResultActionBar
+                  showBefore={showBefore}
+                  onToggleBefore={() => setShowBefore((previous) => !previous)}
+                />
+              ) : null}
+            </View>
             <View style={styles.conceptBadgeRow}>
               <Text style={styles.conceptBadge}>
-                {conceptGenerated ? 'AI Concept Reference' : 'Property Photo'}
+                {canCompare && showBefore ? 'Property Photo' : conceptGenerated ? 'AI Concept Reference' : 'Property Photo'}
               </Text>
             </View>
             <Text style={styles.conceptDisclaimer}>
@@ -291,6 +319,7 @@ const styles = StyleSheet.create({
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notFound: { ...typography.body, color: colors.textSecondary },
   scroll: { padding: spacing.md, paddingBottom: spacing.xl },
+  imageArea: { position: 'relative' },
   imageWrap: { width: '100%', aspectRatio: 16 / 9, borderRadius: radius.lg, marginBottom: spacing.xs },
   image: { width: '100%', aspectRatio: 16 / 9 },
   conceptBadgeRow: { alignItems: 'center', marginBottom: spacing.xs },
