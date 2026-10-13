@@ -421,7 +421,9 @@ export async function getGenerationJob(jobId: string): Promise<GenerationJob | n
   const session = await getCurrentSession();
   const userId = session?.user?.id;
   if (!userId) return null;
-  if (cached?.userId === userId) return { ...cached };
+  // Configured release builds must read the authoritative row: an in-memory
+  // copy may predate account deletion, a server update, or a new plan result.
+  // Local-only development builds continue to use their workspace cache above.
   return getGenerationJobSupabase(jobId, userId);
 }
 
