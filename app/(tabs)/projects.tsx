@@ -88,7 +88,11 @@ export default function ProjectsScreen() {
     !isGenerating;
 
   const openJobResult = (job: GenerationJob) => {
-    if (job.status !== 'completed' || !job.resultImageUrl) return;
+    if (job.status !== 'completed') return;
+    // Text-only plans still have a source property photo. A separate rendered
+    // result image is optional in the current Apple review build.
+    const initialImageUrl = job.resultImageUrl || job.inputPublicUrl || job.inputImageUri;
+    if (!initialImageUrl) return;
     router.push({
       pathname: '/result',
       params: {
@@ -96,7 +100,7 @@ export default function ProjectsScreen() {
         projectType: job.toolId,
         projectTitle: getProjectTypeLabel(job.toolId),
         goal: job.goal ?? '',
-        imageUrl: job.resultImageUrl,
+        imageUrl: initialImageUrl,
         inputImageUrl: job.inputPublicUrl ?? job.inputImageUri ?? '',
       },
     });
