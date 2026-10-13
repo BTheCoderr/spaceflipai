@@ -16,7 +16,7 @@
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
-const FUNCTION_VERSION = 'phase18-delete-workspace-v2';
+const FUNCTION_VERSION = 'release-delete-workspace-v3';
 const DESIGN_INPUTS_BUCKET = 'design-inputs';
 
 const corsHeaders = {
@@ -67,10 +67,12 @@ async function deleteStoragePrefix(
     return;
   }
 
-  for (let page = 0; page < 50; page += 1) {
+  // Always read page zero: deleting files shifts subsequent pages, so using
+  // offset: page * 100 would skip objects when a user has more than 100.
+  for (let batch = 0; batch < 50; batch += 1) {
     const { data: entries, error: listError } = await supabase.storage
       .from(DESIGN_INPUTS_BUCKET)
-      .list(prefix, { limit: 100, offset: page * 100 });
+      .list(prefix, { limit: 100, offset: 0 });
 
     if (listError) {
       result.warned = true;
@@ -92,15 +94,21 @@ async function deleteStoragePrefix(
       const { error: removeError } = await supabase.storage
         .from(DESIGN_INPUTS_BUCKET)
         .remove(filePaths);
-      if (removeError) result.warned = true;
+      if (removeError) {
+        result.warned = true;
+        return;
+      }
     }
 
     for (const folder of folders) {
       await deleteStoragePrefix(supabase, folder, result, depth + 1);
+      if (result.warned) return;
     }
 
     if (entries.length < 100) return;
   }
+  // A bounded cleanup must not claim success while objects could remain.
+  result.warned = true;
 }
 
 async function deleteOwnStorage(
@@ -161,19 +169,21 @@ Deno.serve(async (req: Request) => {
     }
 
     const storageWarning = await deleteOwnStorage(supabase, userId);
-
-    // Best-effort: remove the anonymous auth user. Non-fatal if it fails.
-    try {
-      await supabase.auth.admin.deleteUser(userId);
-    } catch (adminError) {
-      console.warn(
-        '[delete-user-workspace] auth user delete failed (non-fatal):',
-        adminError instanceof Error ? adminError.name : 'unknown'
-      );
+    if (storageWarning) {
+      // Leave the identity active for a retry instead of losing access to
+      // personal photos that may still exist in private Storage.
+      console.warn('[delete-user-workspace] storage cleanup incomplete');
+      return jsonResponse({ ok: false, error: 'Storage cleanup incomplete. Please retry.' }, 503);
     }
 
-    console.log('[delete-user-workspace] completed', FUNCTION_VERSION, { storageWarning });
-    return jsonResponse({ ok: true, storageWarning, functionVersion: FUNCTION_VERSION });
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+    if (authError) {
+      console.warn('[delete-user-workspace] auth identity deletion failed');
+      return jsonResponse({ ok: false, error: 'Could not remove auth identity' }, 500);
+    }
+
+    console.log('[delete-user-workspace] completed', FUNCTION_VERSION);
+    return jsonResponse({ ok: true, storageWarning: false, functionVersion: FUNCTION_VERSION });
   } catch (error) {
     console.error(
       '[delete-user-workspace] Unexpected error:',

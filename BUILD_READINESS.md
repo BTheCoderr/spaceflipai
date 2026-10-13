@@ -166,3 +166,12 @@ SpaceFlip uses two different version concepts:
 - iOS `buildNumber` / Android `versionCode` = developer-facing build identifiers, managed remotely by EAS and auto-incremented for production builds.
 
 Run `npm run release:check` before a release. CI runs the same check automatically and fails if the app name, version, bundle/package ID, EAS project, live Supabase target, publishable-key alignment, encryption declaration, or App Store submission-pack version drift apart.
+
+
+## Release hardening under review (SpaceFlip PR #18)
+
+The latest native work adds gallery handling without over-requesting media permissions, a compressed-image upload limit, stale-upload protection, owner-scoped cached project details, and native iOS/Android bundle checks in CI. The current release keeps AI concept generation gated until provider image QA.
+
+The deletion Edge Function source also includes a fix for storage cleanup over 100 objects and refuses to confirm deletion if private photos or the authentication identity could not be removed. **Deploy and regression-test the updated `delete-user-workspace` function in an isolated test environment before adopting that behavior in production.** A GitHub/CI pass does not deploy Supabase Edge Functions.
+
+Before store submission, create two disposable guest workspaces and verify photo upload, project save/reopen, PDF export, deleting more than 100 stored test objects, and zero remaining auth users or owned photos after successful deletion. Keep the private storage bucket private.
