@@ -307,7 +307,9 @@ export async function getDesignProject(projectId: string): Promise<DesignProject
   const session = await getCurrentSession();
   const userId = session?.user?.id;
   if (!userId) return null;
-  if (cached?.userId === userId) return { ...cached };
+  // A cached project is not authoritative in a configured release. It could
+  // have been deleted or changed on the server since this screen last opened.
+  // Always recheck the owner-scoped row before showing project details.
 
   const client = getSupabaseClient();
   if (!client) return null;
