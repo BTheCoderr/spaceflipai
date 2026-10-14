@@ -72,6 +72,14 @@ export default function ResultScreen() {
   const [reopening, setReopening] = useState(false);
   const isCurrentJob = Boolean(params.jobId && currentJob?.id === params.jobId);
 
+  // Expo Router can reuse this screen between jobs. Do not carry a previous
+  // plan's saved/before state into a newly opened project.
+  useEffect(() => {
+    setSaved(false);
+    setShowBefore(false);
+    setActiveTab('visual');
+  }, [params.jobId]);
+
   useEffect(() => {
     if (isCurrentJob || !params.jobId) {
       setReopenedJob(null);
