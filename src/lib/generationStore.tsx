@@ -222,12 +222,19 @@ export function GenerationProvider({ children }: { children: ReactNode }) {
 
     try {
       const upload = await uploadDesignInputImage(image);
-      setState((prev) => ({
+      // Avoid associating an earlier upload with a newly selected photo.
+      if (stateRef.current.selectedInputImage?.uri !== image.uri) {
+        throw new StorageUploadError(
+          'Your selected photo changed during upload. Please continue again.',
+          'upload_failed'
+        );
+      }
+      setState((prev) => prev.selectedInputImage?.uri === image.uri ? ({
         ...prev,
         uploadedInputPublicUrl: upload.publicUrl,
         uploadedInputStoragePath: upload.storagePath || undefined,
         generationError: undefined,
-      }));
+      }) : prev);
       return upload;
     } catch (error) {
       const message =

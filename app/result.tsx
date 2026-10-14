@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   StyleSheet,
@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { RemoteImage } from '../src/components/RemoteImage';
 import { ResultActionBar } from '../src/components/ResultActionBar';
 import { useGenerationStore } from '../src/lib/generationStore';
+import { getGenerationJob, type GenerationJob } from '../src/lib/generationJobs';
+import { saveDesignProject } from '../src/lib/projects';
 import {
   exportAndSharePlanFromViewModel,
   ExportPlanError,
@@ -56,6 +58,7 @@ export default function ResultScreen() {
     selectedBudgetRange,
     completeCurrentJobMock,
     saveCurrentProject,
+    loadSavedProjects,
     savedProjectsError,
   } = useGenerationStore();
 
@@ -65,23 +68,51 @@ export default function ResultScreen() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [reopenedJob, setReopenedJob] = useState<GenerationJob | null>(null);
+  const [reopening, setReopening] = useState(false);
+  const isCurrentJob = Boolean(params.jobId && currentJob?.id === params.jobId);
 
+  // Expo Router can reuse this screen between jobs. Do not carry a previous
+  // plan's saved/before state into a newly opened project.
+  useEffect(() => {
+    setSaved(false);
+    setShowBefore(false);
+    setActiveTab('visual');
+  }, [params.jobId]);
+
+  useEffect(() => {
+    if (isCurrentJob || !params.jobId) {
+      setReopenedJob(null);
+      setReopening(false);
+      return;
+    }
+    let active = true;
+    setReopenedJob(null);
+    setReopening(true);
+    void getGenerationJob(params.jobId)
+      .then((job) => { if (active) setReopenedJob(job); })
+      .catch(() => { if (active) setReopenedJob(null); })
+      .finally(() => { if (active) setReopening(false); });
+    return () => { active = false; };
+  }, [params.jobId, isCurrentJob]);
+
+  const canUseResult = isCurrentJob || reopenedJob?.status === 'completed';
   const viewModel = useMemo(
     () =>
       buildResultPlanViewModel(params, {
-        selectedGoal,
-        selectedBudgetRange,
-        mockResultImageUrl,
-        mockResultIndex,
-        currentUpgradePlan,
-        currentResultPayload,
-        currentPlanSource,
-        currentAiProvider,
-        currentImageProvider,
-        currentConceptImageGenerated,
-        currentJob,
-        uploadedInputPublicUrl,
-        selectedInputImage,
+        selectedGoal: isCurrentJob ? selectedGoal : reopenedJob?.goal,
+        selectedBudgetRange: isCurrentJob ? selectedBudgetRange : reopenedJob?.budgetRange,
+        mockResultImageUrl: isCurrentJob ? mockResultImageUrl : undefined,
+        mockResultIndex: isCurrentJob ? mockResultIndex : 0,
+        currentUpgradePlan: isCurrentJob ? currentUpgradePlan : undefined,
+        currentResultPayload: isCurrentJob ? currentResultPayload : undefined,
+        currentPlanSource: isCurrentJob ? currentPlanSource : undefined,
+        currentAiProvider: isCurrentJob ? currentAiProvider : undefined,
+        currentImageProvider: isCurrentJob ? currentImageProvider : undefined,
+        currentConceptImageGenerated: isCurrentJob ? currentConceptImageGenerated : undefined,
+        currentJob: isCurrentJob ? currentJob : reopenedJob ?? undefined,
+        uploadedInputPublicUrl: isCurrentJob ? uploadedInputPublicUrl : undefined,
+        selectedInputImage: isCurrentJob ? selectedInputImage : undefined,
       }),
     [
       params,
@@ -98,6 +129,8 @@ export default function ResultScreen() {
       currentJob,
       uploadedInputPublicUrl,
       selectedInputImage,
+      isCurrentJob,
+      reopenedJob,
     ]
   );
 
@@ -111,7 +144,7 @@ export default function ResultScreen() {
   };
 
   const handleRegenerate = async () => {
-    if (regenerating || !params.jobId) return;
+    if (regenerating || !params.jobId || !isCurrentJob) return;
     setRegenerating(true);
     try {
       const result = await regenerateConceptImage(params.jobId);
@@ -137,10 +170,30 @@ export default function ResultScreen() {
   };
 
   const handleSave = async () => {
-    if (saving) return;
+    if (saving || !canUseResult) return;
     setSaving(true);
     try {
-      await saveCurrentProject();
+      if (isCurrentJob) {
+        await saveCurrentProject();
+      } else if (reopenedJob) {
+        const originalPhoto = reopenedJob.inputPublicUrl ?? reopenedJob.inputImageUri;
+        if (!originalPhoto) throw new Error('This job has no source photo.');
+        await saveDesignProject({
+          generationJobId: reopenedJob.id,
+          projectType: reopenedJob.toolId,
+          goal: reopenedJob.goal,
+          budgetRange: viewModel.budgetRange,
+          notes: reopenedJob.notes,
+          inputImageUrl: originalPhoto,
+          resultImageUrl: viewModel.resultImageUrl || originalPhoto,
+          source: reopenedJob.source,
+          checklist: viewModel.priorityChecklist,
+          budgetItems: viewModel.suggestedMaterials,
+          planSummary: viewModel.summary,
+          contractorNotes: viewModel.contractorNotes,
+        });
+        await loadSavedProjects();
+      }
       setSaved(true);
       Alert.alert('Saved to Projects', 'Your upgrade plan is ready in Projects.');
     } catch {
@@ -154,7 +207,7 @@ export default function ResultScreen() {
   };
 
   const handleExport = async () => {
-    if (exporting) return;
+    if (exporting || !canUseResult) return;
     setExporting(true);
     try {
       const { pdfUri, shared } = await exportAndSharePlanFromViewModel(viewModel);
@@ -196,14 +249,16 @@ export default function ResultScreen() {
         <View style={styles.iconBtn} />
       </View>
 
-      <View style={styles.planSourceRow}>
+      {canUseResult ? (
+        <View style={styles.planSourceRow}>
         <Text style={styles.planSourceLabel}>{planSourceLabel}</Text>
         {__DEV__ && aiProviderDevLabel ? (
           <Text style={styles.aiProviderDevLabel}>{aiProviderDevLabel}</Text>
         ) : null}
-      </View>
+        </View>
+      ) : null}
 
-      {currentUsedFallback ? (
+      {isCurrentJob && currentUsedFallback ? (
         <View style={styles.fallbackNote}>
           <Ionicons name="information-circle-outline" size={15} color={colors.textSecondary} />
           <Text style={styles.fallbackNoteText}>
@@ -212,7 +267,16 @@ export default function ResultScreen() {
         </View>
       ) : null}
 
-      <View style={styles.tabRow}>
+      {!canUseResult ? (
+        <View style={styles.fallbackNote}>
+          <Text style={styles.fallbackNoteText}>
+            {reopening ? 'Loading your previous plan…' : 'This plan is no longer available in your workspace.'}
+          </Text>
+        </View>
+      ) : null}
+
+      {canUseResult ? (
+        <View style={styles.tabRow}>
         {tabs.map((tab) => (
           <Pressable
             key={tab.id}
@@ -224,9 +288,11 @@ export default function ResultScreen() {
             </Text>
           </Pressable>
         ))}
-      </View>
+        </View>
+      ) : null}
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      {canUseResult ? (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {activeTab === 'visual' ? (
           viewModel.displayVisualUrl ? (
             <>
@@ -311,17 +377,19 @@ export default function ResultScreen() {
             ))}
           </View>
         ) : null}
-      </ScrollView>
+        </ScrollView>
+      ) : null}
 
-      <View style={styles.footer}>
+      {canUseResult ? (
+        <View style={styles.footer}>
         <Pressable
           style={({ pressed }) => [
             styles.secondaryBtn,
             pressed && styles.pressed,
-            exporting && styles.disabledBtn,
+            (exporting || !canUseResult) && styles.disabledBtn,
           ]}
           onPress={() => void handleExport()}
-          disabled={exporting}
+          disabled={exporting || !canUseResult}
         >
           <Text style={styles.secondaryBtnText}>
             {exporting ? 'Exporting…' : 'Export Plan'}
@@ -331,10 +399,10 @@ export default function ResultScreen() {
           style={({ pressed }) => [
             styles.primaryBtn,
             pressed && !saved && styles.pressed,
-            (saving || saved) && styles.disabledBtn,
+            (saving || saved || !canUseResult) && styles.disabledBtn,
           ]}
           onPress={() => void handleSave()}
-          disabled={saving || saved}
+          disabled={saving || saved || !canUseResult}
           accessibilityRole="button"
           accessibilityLabel={saved ? 'Project saved' : 'Save project'}
         >
@@ -342,9 +410,10 @@ export default function ResultScreen() {
             {saving ? 'Saving…' : saved ? 'Saved' : 'Save Project'}
           </Text>
         </Pressable>
-      </View>
+        </View>
+      ) : null}
 
-      {activeTab === 'visual' && viewModel.showConceptActions ? (
+      {isCurrentJob && activeTab === 'visual' && viewModel.showConceptActions ? (
         <Pressable
           style={({ pressed }) => [styles.regenerateBtn, pressed && styles.pressed]}
           onPress={handleRegenerate}

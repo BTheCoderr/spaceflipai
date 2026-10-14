@@ -8,7 +8,7 @@ import {
   logDbWarning,
   mapSupabaseDbError,
 } from './dbErrors';
-import { getOwnerId, getSupabaseClient, hasSupabaseConfig } from './supabase';
+import { getCurrentSession, getOwnerId, getSupabaseClient, hasSupabaseConfig } from './supabase';
 import {
   deleteDesignInputImage,
   extractDesignInputStoragePath,
@@ -294,25 +294,32 @@ export async function listDesignProjectsForUser(userId = getOwnerId()): Promise<
 }
 
 export async function getDesignProject(projectId: string): Promise<DesignProject | null> {
+  if (!projectId) return null;
   const cached = localProjects.get(projectId);
-  if (cached) {
-    return { ...cached };
-  }
 
   if (!hasSupabaseConfig()) {
-    return null;
+    // Local-only development projects still belong to the local workspace.
+    return cached?.userId === getOwnerId() ? { ...cached } : null;
   }
 
+  // Local cache must never bypass Supabase ownership across anonymous sessions
+  // or after deleting/switching guest workspaces.
+  const session = await getCurrentSession();
+  const userId = session?.user?.id;
+  if (!userId) return null;
+  // A cached project is not authoritative in a configured release. It could
+  // have been deleted or changed on the server since this screen last opened.
+  // Always recheck the owner-scoped row before showing project details.
+
   const client = getSupabaseClient();
-  if (!client) {
-    return null;
-  }
+  if (!client) return null;
 
   try {
     const { data, error } = await client
       .from('design_projects')
       .select('*')
       .eq('id', projectId)
+      .eq('user_id', userId)
       .maybeSingle();
 
     if (error) {

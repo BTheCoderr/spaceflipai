@@ -29,7 +29,6 @@ export class ImagePickerError extends Error {
 }
 
 const MAX_LONG_EDGE = 1400;
-const MAX_INPUT_BYTES = 15 * 1024 * 1024;
 const JPEG_QUALITY = 0.85;
 
 export function isLocalImageUri(uri: string): boolean {
@@ -47,8 +46,8 @@ export async function requestCameraPermission(): Promise<boolean> {
 }
 
 export async function requestMediaLibraryPermission(): Promise<boolean> {
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  return status === 'granted';
+  const { granted, accessPrivileges } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  return granted || accessPrivileges === 'limited';
 }
 
 export function normalizePickedImage(
@@ -69,13 +68,8 @@ export function normalizePickedImage(
 export async function resizeImageForUpload(image: PickedImage): Promise<PickedImage> {
   const longEdge = Math.max(image.width, image.height);
 
-  if (image.fileSize && image.fileSize > MAX_INPUT_BYTES && longEdge <= MAX_LONG_EDGE) {
-    throw new ImagePickerError(
-      'That photo is too large. Please choose a smaller image or take a new photo.',
-      'too_large'
-    );
-  }
-
+  // Even an oversized source can produce a safe, compressed JPEG. Validate
+  // the generated output rather than rejecting the original before resizing.
   try {
     const resizeAction =
       longEdge > MAX_LONG_EDGE
@@ -97,6 +91,8 @@ export async function resizeImageForUpload(image: PickedImage): Promise<PickedIm
       height: result.height,
       mimeType: 'image/jpeg',
       fileName: image.fileName?.replace(/\.\w+$/, '.jpg') ?? `photo-${Date.now()}.jpg`,
+      // Source metadata is invalid after JPEG compression. Storage validates bytes.
+      fileSize: undefined,
     };
   } catch {
     throw new ImagePickerError(
@@ -138,14 +134,9 @@ export async function pickImageFromCamera(): Promise<PickedImage | null> {
 }
 
 export async function pickImageFromGallery(): Promise<PickedImage | null> {
-  const granted = await requestMediaLibraryPermission();
-  if (!granted) {
-    throw new ImagePickerError(
-      'Photo library access is needed to choose a room photo. You can enable it in your device Settings.',
-      'permission_denied'
-    );
-  }
-
+  // Expo SDK 54 uses the system photo picker for selected images, so full
+  // media-library permission isn't needed just to choose a property photo.
+  // Requesting it beforehand would block users who deliberately restrict access.
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
     quality: 1,

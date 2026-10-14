@@ -173,4 +173,6 @@ The repository/build side is prepared. Do not submit until all of these are true
 - A production/TestFlight build is installed and smoke-tested.
 - The Apple review recording URL is added.
 - Final App Store screenshots are captured from the production/TestFlight build.
+- Provenance and permissions for bundled example photos and illustrative category imagery are confirmed or the assets replaced; see `THIRD_PARTY_MEDIA_AUDIT.md`.
+- All seven requested Apple Guideline 2.1 items are complete in `APP_REVIEW_2_1_REPLY.md` and copied to App Store Connect → App Review Information → Notes.
 - App Privacy responses in App Store Connect match the final release build.

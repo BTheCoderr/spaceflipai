@@ -1,4 +1,4 @@
-# Supabase Storage — Device Test Checklist (SpaceFlip Pro)
+> **Historical setup guide, not safe for production.** This document describes the old public-bucket demo setup. The live SpaceFlip backend uses a PRIVATE `design-inputs` bucket with owner-scoped RLS. **Do not apply `SUPABASE_STORAGE_SETUP.sql` or enable public uploads/reads.** Follow [SUPABASE_PRIVATE_STORAGE_MIGRATION.sql](./SUPABASE_PRIVATE_STORAGE_MIGRATION.sql), [SUPABASE_AUTH_MIGRATION.sql](./SUPABASE_AUTH_MIGRATION.sql), and [BUILD_READINESS.md](./BUILD_READINESS.md) for current setup. This legacy guide remains only for migration history.\n\n---\n\n# Supabase Storage — Device Test Checklist (SpaceFlip Pro)
 
 Phase 5 tests **Storage upload only**. No auth, database, Edge Functions, or real AI.
 
