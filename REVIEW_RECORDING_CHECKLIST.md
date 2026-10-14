@@ -6,7 +6,7 @@ Apple asked for a screen recording that demonstrates the app's full functionalit
 
 - [ ] Use a **physical iPhone or iPad** (not the simulator — reviewers want a real device).
 - [ ] Update to the **latest available iOS / iPadOS**.
-- [ ] Build/run a real build (TestFlight build or `--go` Expo Go is fine for the demo video; a TestFlight build is best).
+- [ ] Use the final **signed TestFlight or App Store distribution build**, not Expo Go, a simulator, or a Metro development bundle. Confirm the installed build number is newer than the rejected build 3.
 - [ ] Make sure you have at least one photo in the Photo Library, or plan to use the in-app example photo.
 - [ ] Use a **fresh / test guest workspace** so the delete step at the end is safe.
 - [ ] Turn on screen recording (Control Center) and ensure there is **no personal info** visible.
@@ -31,13 +31,14 @@ Apple asked for a screen recording that demonstrates the app's full functionalit
 - [ ] Show the **account card** (Guest workspace + short ID + "no password required").
 - [ ] Show **Log out** exists.
 - [ ] Show **Delete guest workspace and data** → tap it → show the confirmation modal.
-  - [ ] Only actually confirm the delete **at the very end** (or on a throwaway test workspace), since it cannot be undone.
+  - [ ] **Confirm deletion on a disposable guest workspace at the very end of the recording**, then show the success state/return to entry. Apple explicitly requested the account deletion flow, not just a confirmation dialog. Never delete a real workspace that contains user data.
 - [ ] Stop recording.
 
 ## After recording
 
 - [ ] Upload to a **public or unlisted** link that opens **without any login** (YouTube unlisted, Loom public, Google Drive "anyone with link", or a direct .mp4/.mov URL).
-- [ ] Paste that link into `APP_REVIEW_NOTES.md` and into App Store Connect's Guideline 2.1 reply.
+- [ ] Paste that link into `APP_REVIEW_2_1_REPLY.md` and App Store Connect's Guideline 2.1 reply, and include it in the App Review Information → Notes field.
+- [ ] Enter the **exact physical device model, installed OS version, and tested build number** in the Apple reply; do not rely on the simulator or guess.
 
 ## App Store screenshots (the value story)
 
