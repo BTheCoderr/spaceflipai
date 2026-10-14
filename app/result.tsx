@@ -287,7 +287,8 @@ export default function ResultScreen() {
         ))}
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      {canUseResult ? (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {activeTab === 'visual' ? (
           viewModel.displayVisualUrl ? (
             <>
@@ -372,7 +373,8 @@ export default function ResultScreen() {
             ))}
           </View>
         ) : null}
-      </ScrollView>
+        </ScrollView>
+      ) : null}
 
       <View style={styles.footer}>
         <Pressable
