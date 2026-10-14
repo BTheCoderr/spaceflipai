@@ -105,7 +105,9 @@ async function deleteStoragePrefix(
       if (result.warned) return;
     }
 
-    if (entries.length < 100) return;
+    // Continue until a fresh empty listing confirms cleanup, even if the
+    // previous page was shorter than 100 entries.
+    // The bounded loop fails closed if the provider never empties.
   }
   // A bounded cleanup must not claim success while objects could remain.
   result.warned = true;
