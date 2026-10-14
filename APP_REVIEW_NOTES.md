@@ -1,6 +1,6 @@
 # SpaceFlip Pro — App Review Notes
 
-> Paste the relevant parts of this file into **App Store Connect → App Review Information → Notes**, and respond to the Guideline 2.1 request with the screen recording link below.
+> For a single copy-and-paste reply covering all seven requested items, use `APP_REVIEW_2_1_REPLY.md` after completing its evidence fields. Do not send placeholder device details or a nonexistent recording link. This file is the supporting reference for **App Store Connect → App Review Information → Notes**.
 
 ## Screen recording
 
@@ -56,8 +56,9 @@ No advertising SDKs, no analytics tracking SDKs, no third-party login providers.
 
 ## Compliance answers
 
-- **Regional differences:** None. The app behaves the same in all regions.
-- **Regulated industry / protected material:** None. No regulated, medical, financial, or government content.
+- **Regional differences:** The same features are offered in each distributed region. Planning budget bands are currently displayed in **US dollars** regardless of region; there is no region-specific pricing or feature unlock.
+- **Regulated industry:** Not a licensed/regulated service. Generated plans are drafts, not architecture, permit guidance, engineering, or construction advice.
+- **Third-party material:** The app includes bundled example photos and illustrative remote category imagery. Ownership/licensing has **not yet been fully verified**. See `THIRD_PARTY_MEDIA_AUDIT.md`. Verify or replace every unclear asset before claiming Apple has all rights documentation.
 - **Payments / subscriptions:** None active. No in-app purchases, no RevenueCat, no Stripe, no paywall is enforced.
 - **Forced login:** None. The reviewer can use 100% of features in guest mode.
 - **Account creation:** A guest workspace is created automatically and anonymously; no personal account, email, or password is required.
