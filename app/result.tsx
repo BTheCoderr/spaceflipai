@@ -96,7 +96,7 @@ export default function ResultScreen() {
     return () => { active = false; };
   }, [params.jobId, isCurrentJob]);
 
-  const canUseResult = isCurrentJob || Boolean(reopenedJob);
+  const canUseResult = isCurrentJob || reopenedJob?.status === 'completed';
   const viewModel = useMemo(
     () =>
       buildResultPlanViewModel(params, {
@@ -249,12 +249,14 @@ export default function ResultScreen() {
         <View style={styles.iconBtn} />
       </View>
 
-      <View style={styles.planSourceRow}>
+      {canUseResult ? (
+        <View style={styles.planSourceRow}>
         <Text style={styles.planSourceLabel}>{planSourceLabel}</Text>
         {__DEV__ && aiProviderDevLabel ? (
           <Text style={styles.aiProviderDevLabel}>{aiProviderDevLabel}</Text>
         ) : null}
-      </View>
+        </View>
+      ) : null}
 
       {isCurrentJob && currentUsedFallback ? (
         <View style={styles.fallbackNote}>
@@ -273,7 +275,8 @@ export default function ResultScreen() {
         </View>
       ) : null}
 
-      <View style={styles.tabRow}>
+      {canUseResult ? (
+        <View style={styles.tabRow}>
         {tabs.map((tab) => (
           <Pressable
             key={tab.id}
@@ -285,7 +288,8 @@ export default function ResultScreen() {
             </Text>
           </Pressable>
         ))}
-      </View>
+        </View>
+      ) : null}
 
       {canUseResult ? (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
@@ -376,7 +380,8 @@ export default function ResultScreen() {
         </ScrollView>
       ) : null}
 
-      <View style={styles.footer}>
+      {canUseResult ? (
+        <View style={styles.footer}>
         <Pressable
           style={({ pressed }) => [
             styles.secondaryBtn,
@@ -405,7 +410,8 @@ export default function ResultScreen() {
             {saving ? 'Saving…' : saved ? 'Saved' : 'Save Project'}
           </Text>
         </Pressable>
-      </View>
+        </View>
+      ) : null}
 
       {isCurrentJob && activeTab === 'visual' && viewModel.showConceptActions ? (
         <Pressable
